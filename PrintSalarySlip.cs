@@ -413,7 +413,7 @@ FROM         new_invoiceBase INNER JOIN
         }
     }
 
-    protected async Task BtnDownload_Click(object sender, EventArgs e)
+    protected void BtnDownload_Click(object sender, EventArgs e)
 {
     try
     {
@@ -490,7 +490,7 @@ FROM         new_invoiceBase INNER JOIN
                 == "C4FA09AF-383D-E711-80C9-000D3AB61E51".ToLower()
             ) //COGNIZANT. Project
             {
-                FileText = await File.ReadAllTextAsync(
+                FileText =  Ftile.ReadAllTex(
                     Server.MapPath("~/Templates/ProjectInvoice/Salary-Slip-COGNIZANT.xml")
                 );
                 FileText = GlobalCode.ReplaceTempPassword(
