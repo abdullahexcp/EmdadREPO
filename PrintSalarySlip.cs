@@ -355,10 +355,11 @@ FROM         new_invoiceBase INNER JOIN
                 }
                 else
                 {
-                    sql += "new_invoiceBase.new_fromdate >= CONVERT(datetime, '" + fromdate.Text + "')";
+                    sql +=
+                        "new_invoiceBase.new_fromdate >= CONVERT(datetime, '"
+                        + fromdate.Text
+                        + "')";
                 }
-
-
 
                 if (string.IsNullOrEmpty(todate.Text))
                 {
@@ -366,7 +367,10 @@ FROM         new_invoiceBase INNER JOIN
                 }
                 else
                 {
-                    sql += " and new_invoiceBase.new_todate >= CONVERT(datetime, '" + todate.Text + "')";
+                    sql +=
+                        " and new_invoiceBase.new_todate <= CONVERT(datetime, '"
+                        + todate.Text
+                        + "')";
                 }
             }
 
@@ -431,7 +435,6 @@ FROM         new_invoiceBase INNER JOIN
                 Request.QueryString["UserID"]
             );
 
-
             var projectInvoiceId = Request.QueryString["id"];
 
             if (!string.IsNullOrEmpty(projectInvoiceId))
@@ -449,10 +452,11 @@ FROM         new_invoiceBase INNER JOIN
                 }
                 else
                 {
-                    salarySlipQuery += "new_invoiceBase.new_fromdate >= CONVERT(datetime, '" + fromdate.Text + "')";
+                    salarySlipQuery +=
+                        "new_invoiceBase.new_fromdate >= CONVERT(datetime, '"
+                        + fromdate.Text
+                        + "')";
                 }
-
-
 
                 if (string.IsNullOrEmpty(todate.Text))
                 {
@@ -460,10 +464,12 @@ FROM         new_invoiceBase INNER JOIN
                 }
                 else
                 {
-                    salarySlipQuery += " and new_invoiceBase.new_todate >= CONVERT(datetime, '" + todate.Text + "')";
+                    salarySlipQuery +=
+                        " and new_invoiceBase.new_todate <= CONVERT(datetime, '"
+                        + todate.Text
+                        + "')";
                 }
             }
-
 
             if (!string.IsNullOrEmpty(empsNo.Text))
             {
@@ -479,7 +485,7 @@ FROM         new_invoiceBase INNER JOIN
             }
             DataSet myds = new DataSet();
 
-            //
+            
             myds = CRMAccessDB.SelectQ(salarySlipQuery);
             DataTable dt = myds.Tables[0];
             DateTime now = DateTime.Now;
@@ -570,7 +576,6 @@ FROM         new_invoiceBase INNER JOIN
 
             // End the response
             Response.End();
-
         }
         catch (Exception ex)
         {
@@ -721,8 +726,6 @@ FROM         new_invoiceBase INNER JOIN
             Request.QueryString["UserID"]
         );
 
-
-
         var projectInvoiceId = Request.QueryString["id"];
 
         if (!string.IsNullOrEmpty(projectInvoiceId))
@@ -752,7 +755,6 @@ FROM         new_invoiceBase INNER JOIN
                 salarySlipQuery += "new_todate <= CONVERT(datetime, '" + todate.Text + "')";
             }
         }
-
 
         //and  new_EmployeeBase.new_empidnumber='20004666'
         //new_empidnumber ,new_borderno,new_IDNumber
@@ -831,7 +833,6 @@ FROM         new_invoiceBase INNER JOIN
             //    myds = CRMAccessDB.SelectQ(sqlQueryHeadOffice);
             //    dt = myds.Tables[0];
             //}
-
         }
         //for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
         for (int i = 0; i < dt.Rows.Count; i++)
