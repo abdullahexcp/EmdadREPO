@@ -371,39 +371,39 @@ FROM         new_invoiceBase INNER JOIN
             }
 
             DataSet myds = new DataSet();
-        myds = CRMAccessDB.SelectQ(sql);
-        DataTable dt = myds.Tables[0];
-        DateTime now = DateTime.Now;
+            myds = CRMAccessDB.SelectQ(sql);
+            DataTable dt = myds.Tables[0];
+            DateTime now = DateTime.Now;
 
-        for (int i = 0; i < dt.Rows.Count; i++)
-        {
-            now = Convert.ToDateTime(dt.Rows[i]["تاريخالفاتورة"].ToString());
-            FileText = FileText.Replace("تاريخالفاتورة", now.ToString("MM/yyyy"));
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                now = Convert.ToDateTime(dt.Rows[i]["تاريخالفاتورة"].ToString());
+                FileText = FileText.Replace("تاريخالفاتورة", now.ToString("MM/yyyy"));
+            }
+
+            FileText = InsertRepeatedRow(FileText, "اسمالموظف", dt);
+
+            FileText = FileText.Replace("تاريخاليوم", DateTime.Now.ToString());
+
+            //FileText = FileText.Replace("tafkeetEnlish", toword.ConvertToEnglish());
+            Response.ClearContent();
+
+            // LINE1: Add the file name and attachment, which will force the open/cance/save dialog to show, to the header
+            string fileName = "Download.doc"; // dt.Rows[0]["اسمالموظف"] + ".doc";
+            Response.AddHeader("Content-Disposition", "attachment; filename=" + fileName);
+
+            // Add the file size into the response header
+            //  Response.AddHeader("Content-Length", file.Length.ToString());
+
+            // Set the ContentType
+            Response.ContentType = "application/ms-word";
+
+            // Write the file into the response (TransmitFile is for ASP.NET 2.0. In ASP.NET 1.1 you have to use WriteFile instead)
+            Response.Write(FileText);
+
+            // End the response
+            Response.End();
         }
-
-        FileText = InsertRepeatedRow(FileText, "اسمالموظف", dt);
-
-        FileText = FileText.Replace("تاريخاليوم", DateTime.Now.ToString());
-
-        //FileText = FileText.Replace("tafkeetEnlish", toword.ConvertToEnglish());
-        Response.ClearContent();
-
-        // LINE1: Add the file name and attachment, which will force the open/cance/save dialog to show, to the header
-        string fileName = "Download.doc"; // dt.Rows[0]["اسمالموظف"] + ".doc";
-        Response.AddHeader("Content-Disposition", "attachment; filename=" + fileName);
-
-        // Add the file size into the response header
-        //  Response.AddHeader("Content-Length", file.Length.ToString());
-
-        // Set the ContentType
-        Response.ContentType = "application/ms-word";
-
-        // Write the file into the response (TransmitFile is for ASP.NET 2.0. In ASP.NET 1.1 you have to use WriteFile instead)
-        Response.Write(FileText);
-
-        // End the response
-        Response.End();
-    }
         catch (Exception ex)
         {
             Response.Write(ex.Message);
@@ -414,22 +414,22 @@ FROM         new_invoiceBase INNER JOIN
     }
 
     protected void BtnDownload_Click(object sender, EventArgs e)
-{
-    try
     {
-        bool HeadOffice = false;
-        string empIds = string.Empty;
-        string FileText = File.ReadAllText(
-            Server.MapPath("~/Templates/ProjectInvoice/Salary-Slip.xml")
-        );
-        FileText = GlobalCode.ReplaceTempPassword(
-            FileText,
-            ConfigurationManager.AppSettings["MSWordhash"],
-            ConfigurationManager.AppSettings["MSWordsalt"],
-            ConfigurationManager.AppSettings["MSWordProviderType"],
-            ConfigurationManager.AppSettings["MSWordAlgorithmSid"],
-            Request.QueryString["UserID"]
-        );
+        try
+        {
+            bool HeadOffice = false;
+            string empIds = string.Empty;
+            string FileText = File.ReadAllText(
+                Server.MapPath("~/Templates/ProjectInvoice/Salary-Slip.xml")
+            );
+            FileText = GlobalCode.ReplaceTempPassword(
+                FileText,
+                ConfigurationManager.AppSettings["MSWordhash"],
+                ConfigurationManager.AppSettings["MSWordsalt"],
+                ConfigurationManager.AppSettings["MSWordProviderType"],
+                ConfigurationManager.AppSettings["MSWordAlgorithmSid"],
+                Request.QueryString["UserID"]
+            );
 
 
             var projectInvoiceId = Request.QueryString["id"];
@@ -466,6 +466,298 @@ FROM         new_invoiceBase INNER JOIN
 
 
             if (!string.IsNullOrEmpty(empsNo.Text))
+            {
+                empIds = GlobalCode.ConvertLinesToQuoteComma(empsNo.Text);
+                salarySlipQuery +=
+                    "  and (  new_EmployeeBase.new_empidnumber in("
+                    + empIds
+                    + ") or new_EmployeeBase.new_borderno in("
+                    + empIds
+                    + ") or new_EmployeeBase.new_IDNumber in("
+                    + empIds
+                    + ") )";
+            }
+            DataSet myds = new DataSet();
+
+            //
+            myds = CRMAccessDB.SelectQ(salarySlipQuery);
+            DataTable dt = myds.Tables[0];
+            DateTime now = DateTime.Now;
+            if (dt.Rows.Count > 0)
+            {
+                if (
+                    dt.Rows[0]["projid"].ToString().ToLower()
+                    == "C4FA09AF-383D-E711-80C9-000D3AB61E51".ToLower()
+                ) //COGNIZANT. Project
+                {
+                    FileText = File.ReadAllText(
+                        Server.MapPath("~/Templates/ProjectInvoice/Salary-Slip-COGNIZANT.xml")
+                    );
+                    FileText = GlobalCode.ReplaceTempPassword(
+                        FileText,
+                        ConfigurationManager.AppSettings["MSWordhash"],
+                        ConfigurationManager.AppSettings["MSWordsalt"],
+                        ConfigurationManager.AppSettings["MSWordProviderType"],
+                        ConfigurationManager.AppSettings["MSWordAlgorithmSid"],
+                        Request.QueryString["UserID"]
+                    );
+                }
+
+                //if (
+                //    dt.Rows[0]["projid"].ToString().ToLower()
+                //    == "5D1B5CBB-6307-E511-80C6-0050568B1DBC".ToLower()
+                //) //head office. Project
+                //{
+                //    HeadOffice = true;
+                //    FileText = File.ReadAllText(
+                //        Server.MapPath("~/Templates/ProjectInvoice/Salary-Slip-HeadOffice.xml")
+                //    );
+                //    FileText = GlobalCode.ReplaceTempPassword(
+                //        FileText,
+                //        ConfigurationManager.AppSettings["MSWordhash"],
+                //        ConfigurationManager.AppSettings["MSWordsalt"],
+                //        ConfigurationManager.AppSettings["MSWordProviderType"],
+                //        ConfigurationManager.AppSettings["MSWordAlgorithmSid"],
+                //        Request.QueryString["UserID"]
+                //    );
+
+
+
+
+                //   var projectInvoiceId = Request.QueryString["id"];
+
+                //    if (!string.IsNullOrEmpty(projectInvoiceId))
+                //    {
+                //        sqlQueryHeadOffice += " where new_invoiceBase.new_invoiceId = '@id'";
+                //        sqlQueryHeadOffice = sqlQueryHeadOffice.Replace("@id", projectInvoiceId);
+                //    }
+
+
+                //    myds = new DataSet();
+                //    myds = CRMAccessDB.SelectQ(sqlQueryHeadOffice);
+                //    dt = myds.Tables[0];
+                //}
+            }
+
+            if (!HeadOffice)
+            {
+                for (int i = 0; i < dt.Rows.Count; i++)
+                {
+                    now = Convert.ToDateTime(dt.Rows[i]["تاريخالفاتورة"].ToString());
+                    FileText = FileText.Replace("تاريخالفاتورة", now.ToString("MM/yyyy"));
+                }
+
+                FileText = FileText.Replace("تاريخاليوم", DateTime.Now.ToString());
+            }
+            FileText = InsertRepeatedRow(FileText, "rowxx", dt);
+            //FileText = FileText.Replace("tafkeetEnlish", toword.ConvertToEnglish());
+            Response.ClearContent();
+
+            // LINE1: Add the file name and attachment, which will force the open/cance/save dialog to show, to the header
+            string fileName = "Salary Slip.doc"; // dt.Rows[0]["اسمالموظف"] + ".doc";
+            Response.AddHeader("Content-Disposition", "attachment; filename=" + fileName);
+
+            GlobalCode.ConvertDocToPDF(FileText, fileName);
+
+            // Add the file size into the response header
+            //  Response.AddHeader("Content-Length", file.Length.ToString());
+
+            // Set the ContentType
+            Response.ContentType = "application/ms-word";
+
+            // Write the file into the response (TransmitFile is for ASP.NET 2.0. In ASP.NET 1.1 you have to use WriteFile instead)
+            Response.Write(FileText);
+
+            // End the response
+            Response.End();
+
+        }
+        catch (Exception ex)
+        {
+            Response.Write(ex.Message);
+
+            // End the response
+            Response.End();
+        }
+    }
+
+    public static string InsertRepeatedRow(
+        string xmlData,
+        string WordInRowToReplace,
+        System.Data.DataTable dtData
+    )
+    {
+        XmlDocument doc = new XmlDocument();
+        doc.LoadXml(xmlData);
+        XmlNode trStart = null;
+        XmlNode Table = null;
+        XmlNode trEnd = null;
+        XmlNodeList nodeList = doc.GetElementsByTagName("w:t");
+        for (int i = 0; i < nodeList.Count; i++)
+        {
+            if (nodeList[i].InnerText.Contains(WordInRowToReplace))
+            {
+                trStart = GlobalCode.GetParent(nodeList[i], "w:tbl");
+                Table = GlobalCode.GetParent(nodeList[i], "w:body");
+            }
+        }
+        Table.RemoveChild(trStart);
+
+        //  XmlDataDocument docstart = new XmlDataDocument();
+        //docstart.LoadXml(fileStart);
+        XmlNode currentNode = trStart;
+        string replaceText = trStart.OuterXml;
+        System.Text.StringBuilder rows = new System.Text.StringBuilder();
+        string tempRow = "";
+        for (int rowIndex = 0; rowIndex < dtData.Rows.Count; rowIndex++)
+        {
+            XmlNode node = trStart.CloneNode(true);
+            for (int i = 0; i < dtData.Columns.Count; i++)
+            {
+                try
+                {
+                    decimal value = 0;
+
+                    if (dtData.Columns[i].DataType == typeof(decimal))
+                    {
+                        decimal.TryParse(dtData.Rows[rowIndex][i].ToString(), out value);
+                        tempRow = node.InnerXml;
+                        tempRow = tempRow.Replace(
+                            "" + dtData.Columns[i].ColumnName,
+                            value.ToString("0")
+                        );
+                        // tempRow = System.Web.HTTPUtility.HTMLDecode(tempRow);
+                        node.InnerXml = tempRow;
+                    }
+                    else if (
+                        dtData.Columns[i].DataType == typeof(DateTime)
+                        && dtData.Rows[rowIndex][i].ToString() != ""
+                    )
+                    {
+                        DateTime currentDate = new DateTime();
+                        currentDate = (DateTime)dtData.Rows[rowIndex][i];
+                        tempRow = tempRow.Replace(
+                            "" + dtData.Columns[i].ColumnName,
+                            currentDate.ToString("dd/MM/yyyy")
+                        );
+                    }
+                    else
+                    {
+                        tempRow = node.InnerXml;
+                        tempRow = tempRow.Replace(
+                            "" + dtData.Columns[i].ColumnName,
+                            dtData.Rows[rowIndex][i]
+                                .ToString()
+                                .Replace(".000000000000", "")
+                                .Replace(".0000000000", "")
+                                .Replace(".00000000", "")
+                                .Replace(".0000", "")
+                                .Replace("'", "&apos;")
+                                .Replace("\"", "&quot;")
+                                .Replace(">", "&gt;")
+                                .Replace("<", "&lt;")
+                                .Replace("&", "&amp;")
+                        );
+                        // tempRow = System.Web.HTTPUtility.HTMLDecode(tempRow);
+                        node.InnerXml = tempRow;
+                    }
+                }
+                catch (Exception ex) { }
+            }
+
+            Table.AppendChild(node);
+        }
+
+        return doc.OuterXml;
+    }
+
+    protected void btnUpdate_Click(object sender, EventArgs e)
+    {
+        if (FileUpload1.HasFile)
+        {
+            ConvertToExcel.ExcelImport excel = new ConvertToExcel.ExcelImport();
+            DataTable dt = ConvertToExcel.ExcelImport
+                .ImportAnyExcel(FileUpload1.FileName, FileUpload1.PostedFile, true)
+                .Tables[0];
+            //  ColumnPair keyColumn= new ColumnPair("MawaridNumber","new_onlynumber");
+            ColumnPair keyColumn = new ColumnPair("crmID", "new_onlynumber");
+            List<ColumnPair> columns = new List<ColumnPair>();
+            //columns.Add(new ColumnPair("EMAIL", "EmailAddress"));
+            //int rows = excel.GenerateUpdateFromExcelByTempTable(dt, "new_employee", keyColumn, columns);
+
+            columns.Add(new ColumnPair("EMAIL", "emailaddress"));
+            columns.Add(new ColumnPair("Mobile", "new_mobileno"));
+            DataView dvData = new DataView(dt);
+            dvData.RowFilter = "Mobile is not null";
+            DataTable NewDT = dvData.Table.Copy();
+            int rows = excel.GenerateUpdateFromExcelByTempTable(
+                NewDT,
+                "new_employee",
+                keyColumn,
+                columns
+            );
+
+            Response.Write("Number of Updated rows is " + rows.ToString());
+        }
+        else
+        {
+            Response.Write("please , choose the file first");
+        }
+    }
+
+    protected void btnSendToAll_Click(object sender, EventArgs e)
+    {
+        bool HeadOffice = false;
+        string empIds = string.Empty;
+        string FileText = File.ReadAllText(
+            Server.MapPath("~/Templates/ProjectInvoice/Salary-Slip.xml")
+        );
+        FileText = GlobalCode.ReplaceTempPassword(
+            FileText,
+            ConfigurationManager.AppSettings["MSWordhash"],
+            ConfigurationManager.AppSettings["MSWordsalt"],
+            ConfigurationManager.AppSettings["MSWordProviderType"],
+            ConfigurationManager.AppSettings["MSWordAlgorithmSid"],
+            Request.QueryString["UserID"]
+        );
+
+
+
+        var projectInvoiceId = Request.QueryString["id"];
+
+        if (!string.IsNullOrEmpty(projectInvoiceId))
+        {
+            salarySlipQuery += " where new_invoiceBase.new_invoiceId = '@id'";
+            salarySlipQuery = salarySlipQuery.Replace("@id", projectInvoiceId);
+        }
+        else
+        {
+            if (!string.IsNullOrEmpty(fromdate.Text))
+            {
+                if (!salarySlipQuery.ToLowerInvariant().Contains("where"))
+                    salarySlipQuery += "Where ";
+                else
+                    salarySlipQuery += " and ";
+
+                salarySlipQuery += "new_fromdate >= CONVERT(datetime, '" + fromdate.Text + "')";
+            }
+
+            if (!string.IsNullOrEmpty(todate.Text))
+            {
+                if (!salarySlipQuery.ToLowerInvariant().Contains("where"))
+                    salarySlipQuery += "Where ";
+                else
+                    salarySlipQuery += " and ";
+
+                salarySlipQuery += "new_todate <= CONVERT(datetime, '" + todate.Text + "')";
+            }
+        }
+
+
+        //and  new_EmployeeBase.new_empidnumber='20004666'
+        //new_empidnumber ,new_borderno,new_IDNumber
+
+        if (!string.IsNullOrEmpty(empsNo.Text))
         {
             empIds = GlobalCode.ConvertLinesToQuoteComma(empsNo.Text);
             salarySlipQuery +=
@@ -478,8 +770,6 @@ FROM         new_invoiceBase INNER JOIN
                 + ") )";
         }
         DataSet myds = new DataSet();
-
-        //
         myds = CRMAccessDB.SelectQ(salarySlipQuery);
         DataTable dt = myds.Tables[0];
         DateTime now = DateTime.Now;
@@ -488,9 +778,9 @@ FROM         new_invoiceBase INNER JOIN
             if (
                 dt.Rows[0]["projid"].ToString().ToLower()
                 == "C4FA09AF-383D-E711-80C9-000D3AB61E51".ToLower()
-            ) //COGNIZANT. Project
+            )
             {
-                FileText =  Ftile.ReadAllTex(
+                FileText = File.ReadAllText(
                     Server.MapPath("~/Templates/ProjectInvoice/Salary-Slip-COGNIZANT.xml")
                 );
                 FileText = GlobalCode.ReplaceTempPassword(
@@ -503,6 +793,7 @@ FROM         new_invoiceBase INNER JOIN
                 );
             }
 
+            //skip head office
             //if (
             //    dt.Rows[0]["projid"].ToString().ToLower()
             //    == "5D1B5CBB-6307-E511-80C6-0050568B1DBC".ToLower()
@@ -520,346 +811,55 @@ FROM         new_invoiceBase INNER JOIN
             //        ConfigurationManager.AppSettings["MSWordAlgorithmSid"],
             //        Request.QueryString["UserID"]
             //    );
+            //    //sqlQueryHeadOffice += " where new_invoiceBase.new_invoiceId = '@id'";
+            //    //sqlQueryHeadOffice = sqlQueryHeadOffice.Replace("@id", Request.QueryString["id"]);
 
 
-
-
-            //   var projectInvoiceId = Request.QueryString["id"];
-
-            //    if (!string.IsNullOrEmpty(projectInvoiceId))
+            //    if (!string.IsNullOrEmpty(empsNo.Text))
             //    {
-            //        sqlQueryHeadOffice += " where new_invoiceBase.new_invoiceId = '@id'";
-            //        sqlQueryHeadOffice = sqlQueryHeadOffice.Replace("@id", projectInvoiceId);
+            //        empIds = GlobalCode.ConvertLinesToQuoteComma(empsNo.Text);
+            //        sqlQueryHeadOffice +=
+            //            "  and (  new_EmployeeBase.new_empidnumber in("
+            //            + empIds
+            //            + ") or new_EmployeeBase.new_borderno in("
+            //            + empIds
+            //            + ") or new_EmployeeBase.new_IDNumber in("
+            //            + empIds
+            //            + ") )";
             //    }
-
-
             //    myds = new DataSet();
             //    myds = CRMAccessDB.SelectQ(sqlQueryHeadOffice);
             //    dt = myds.Tables[0];
             //}
-        }
 
-        if (!HeadOffice)
+        }
+        //for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
+        for (int i = 0; i < dt.Rows.Count; i++)
         {
-            for (int i = 0; i < dt.Rows.Count; i++)
-            {
-                now = Convert.ToDateTime(dt.Rows[i]["تاريخالفاتورة"].ToString());
-                FileText = FileText.Replace("تاريخالفاتورة", now.ToString("MM/yyyy"));
-            }
-
-            FileText = FileText.Replace("تاريخاليوم", DateTime.Now.ToString());
-        }
-        FileText = InsertRepeatedRow(FileText, "rowxx", dt);
-        //FileText = FileText.Replace("tafkeetEnlish", toword.ConvertToEnglish());
-        Response.ClearContent();
-
-        // LINE1: Add the file name and attachment, which will force the open/cance/save dialog to show, to the header
-        string fileName = "Salary Slip.doc"; // dt.Rows[0]["اسمالموظف"] + ".doc";
-        Response.AddHeader("Content-Disposition", "attachment; filename=" + fileName);
-
-        GlobalCode.ConvertDocToPDF(FileText, fileName);
-
-        // Add the file size into the response header
-        //  Response.AddHeader("Content-Length", file.Length.ToString());
-
-        // Set the ContentType
-        Response.ContentType = "application/ms-word";
-
-        // Write the file into the response (TransmitFile is for ASP.NET 2.0. In ASP.NET 1.1 you have to use WriteFile instead)
-        Response.Write(FileText);
-
-        // End the response
-        Response.End();
-
-    }
-    catch (Exception ex)
-    {
-        Response.Write(ex.Message);
-
-        // End the response
-        Response.End();
-    }
-}
-
-public static string InsertRepeatedRow(
-    string xmlData,
-    string WordInRowToReplace,
-    System.Data.DataTable dtData
-)
-{
-    XmlDocument doc = new XmlDocument();
-    doc.LoadXml(xmlData);
-    XmlNode trStart = null;
-    XmlNode Table = null;
-    XmlNode trEnd = null;
-    XmlNodeList nodeList = doc.GetElementsByTagName("w:t");
-    for (int i = 0; i < nodeList.Count; i++)
-    {
-        if (nodeList[i].InnerText.Contains(WordInRowToReplace))
-        {
-            trStart = GlobalCode.GetParent(nodeList[i], "w:tbl");
-            Table = GlobalCode.GetParent(nodeList[i], "w:body");
-        }
-    }
-    Table.RemoveChild(trStart);
-
-    //  XmlDataDocument docstart = new XmlDataDocument();
-    //docstart.LoadXml(fileStart);
-    XmlNode currentNode = trStart;
-    string replaceText = trStart.OuterXml;
-    System.Text.StringBuilder rows = new System.Text.StringBuilder();
-    string tempRow = "";
-    for (int rowIndex = 0; rowIndex < dtData.Rows.Count; rowIndex++)
-    {
-        XmlNode node = trStart.CloneNode(true);
-        for (int i = 0; i < dtData.Columns.Count; i++)
-        {
-            try
-            {
-                decimal value = 0;
-
-                if (dtData.Columns[i].DataType == typeof(decimal))
-                {
-                    decimal.TryParse(dtData.Rows[rowIndex][i].ToString(), out value);
-                    tempRow = node.InnerXml;
-                    tempRow = tempRow.Replace(
-                        "" + dtData.Columns[i].ColumnName,
-                        value.ToString("0")
-                    );
-                    // tempRow = System.Web.HTTPUtility.HTMLDecode(tempRow);
-                    node.InnerXml = tempRow;
-                }
-                else if (
-                    dtData.Columns[i].DataType == typeof(DateTime)
-                    && dtData.Rows[rowIndex][i].ToString() != ""
-                )
-                {
-                    DateTime currentDate = new DateTime();
-                    currentDate = (DateTime)dtData.Rows[rowIndex][i];
-                    tempRow = tempRow.Replace(
-                        "" + dtData.Columns[i].ColumnName,
-                        currentDate.ToString("dd/MM/yyyy")
-                    );
-                }
-                else
-                {
-                    tempRow = node.InnerXml;
-                    tempRow = tempRow.Replace(
-                        "" + dtData.Columns[i].ColumnName,
-                        dtData.Rows[rowIndex][i]
-                            .ToString()
-                            .Replace(".000000000000", "")
-                            .Replace(".0000000000", "")
-                            .Replace(".00000000", "")
-                            .Replace(".0000", "")
-                            .Replace("'", "&apos;")
-                            .Replace("\"", "&quot;")
-                            .Replace(">", "&gt;")
-                            .Replace("<", "&lt;")
-                            .Replace("&", "&amp;")
-                    );
-                    // tempRow = System.Web.HTTPUtility.HTMLDecode(tempRow);
-                    node.InnerXml = tempRow;
-                }
-            }
-            catch (Exception ex) { }
-        }
-
-        Table.AppendChild(node);
-    }
-
-    return doc.OuterXml;
-}
-
-protected void btnUpdate_Click(object sender, EventArgs e)
-{
-    if (FileUpload1.HasFile)
-    {
-        ConvertToExcel.ExcelImport excel = new ConvertToExcel.ExcelImport();
-        DataTable dt = ConvertToExcel.ExcelImport
-            .ImportAnyExcel(FileUpload1.FileName, FileUpload1.PostedFile, true)
-            .Tables[0];
-        //  ColumnPair keyColumn= new ColumnPair("MawaridNumber","new_onlynumber");
-        ColumnPair keyColumn = new ColumnPair("crmID", "new_onlynumber");
-        List<ColumnPair> columns = new List<ColumnPair>();
-        //columns.Add(new ColumnPair("EMAIL", "EmailAddress"));
-        //int rows = excel.GenerateUpdateFromExcelByTempTable(dt, "new_employee", keyColumn, columns);
-
-        columns.Add(new ColumnPair("EMAIL", "emailaddress"));
-        columns.Add(new ColumnPair("Mobile", "new_mobileno"));
-        DataView dvData = new DataView(dt);
-        dvData.RowFilter = "Mobile is not null";
-        DataTable NewDT = dvData.Table.Copy();
-        int rows = excel.GenerateUpdateFromExcelByTempTable(
-            NewDT,
-            "new_employee",
-            keyColumn,
-            columns
-        );
-
-        Response.Write("Number of Updated rows is " + rows.ToString());
-    }
-    else
-    {
-        Response.Write("please , choose the file first");
-    }
-}
-
-protected void btnSendToAll_Click(object sender, EventArgs e)
-{
-    bool HeadOffice = false;
-    string empIds = string.Empty;
-    string FileText = File.ReadAllText(
-        Server.MapPath("~/Templates/ProjectInvoice/Salary-Slip.xml")
-    );
-    FileText = GlobalCode.ReplaceTempPassword(
-        FileText,
-        ConfigurationManager.AppSettings["MSWordhash"],
-        ConfigurationManager.AppSettings["MSWordsalt"],
-        ConfigurationManager.AppSettings["MSWordProviderType"],
-        ConfigurationManager.AppSettings["MSWordAlgorithmSid"],
-        Request.QueryString["UserID"]
-    );
-
-
-
-    var projectInvoiceId = Request.QueryString["id"];
-
-    if (!string.IsNullOrEmpty(projectInvoiceId))
-    {
-        salarySlipQuery += " where new_invoiceBase.new_invoiceId = '@id'";
-        salarySlipQuery = salarySlipQuery.Replace("@id", projectInvoiceId);
-    }
-    else
-    {
-        if (!string.IsNullOrEmpty(fromdate.Text))
-        {
-            if (!salarySlipQuery.ToLowerInvariant().Contains("where"))
-                salarySlipQuery += "Where ";
-            else
-                salarySlipQuery += " and ";
-
-            salarySlipQuery += "new_fromdate >= CONVERT(datetime, '" + fromdate.Text + "')";
-        }
-
-        if (!string.IsNullOrEmpty(todate.Text))
-        {
-            if (!salarySlipQuery.ToLowerInvariant().Contains("where"))
-                salarySlipQuery += "Where ";
-            else
-                salarySlipQuery += " and ";
-
-            salarySlipQuery += "new_todate <= CONVERT(datetime, '" + todate.Text + "')";
-        }
-    }
-
-
-    //and  new_EmployeeBase.new_empidnumber='20004666'
-    //new_empidnumber ,new_borderno,new_IDNumber
-
-    if (!string.IsNullOrEmpty(empsNo.Text))
-    {
-        empIds = GlobalCode.ConvertLinesToQuoteComma(empsNo.Text);
-        salarySlipQuery +=
-            "  and (  new_EmployeeBase.new_empidnumber in("
-            + empIds
-            + ") or new_EmployeeBase.new_borderno in("
-            + empIds
-            + ") or new_EmployeeBase.new_IDNumber in("
-            + empIds
-            + ") )";
-    }
-    DataSet myds = new DataSet();
-    myds = CRMAccessDB.SelectQ(salarySlipQuery);
-    DataTable dt = myds.Tables[0];
-    DateTime now = DateTime.Now;
-    if (dt.Rows.Count > 0)
-    {
-        if (
-            dt.Rows[0]["projid"].ToString().ToLower()
-            == "C4FA09AF-383D-E711-80C9-000D3AB61E51".ToLower()
-        )
-        {
-            FileText = File.ReadAllText(
-                Server.MapPath("~/Templates/ProjectInvoice/Salary-Slip-COGNIZANT.xml")
-            );
-            FileText = GlobalCode.ReplaceTempPassword(
-                FileText,
-                ConfigurationManager.AppSettings["MSWordhash"],
-                ConfigurationManager.AppSettings["MSWordsalt"],
-                ConfigurationManager.AppSettings["MSWordProviderType"],
-                ConfigurationManager.AppSettings["MSWordAlgorithmSid"],
-                Request.QueryString["UserID"]
-            );
-        }
-
-        //skip head office
-        //if (
-        //    dt.Rows[0]["projid"].ToString().ToLower()
-        //    == "5D1B5CBB-6307-E511-80C6-0050568B1DBC".ToLower()
-        //) //head office. Project
-        //{
-        //    HeadOffice = true;
-        //    FileText = File.ReadAllText(
-        //        Server.MapPath("~/Templates/ProjectInvoice/Salary-Slip-HeadOffice.xml")
-        //    );
-        //    FileText = GlobalCode.ReplaceTempPassword(
-        //        FileText,
-        //        ConfigurationManager.AppSettings["MSWordhash"],
-        //        ConfigurationManager.AppSettings["MSWordsalt"],
-        //        ConfigurationManager.AppSettings["MSWordProviderType"],
-        //        ConfigurationManager.AppSettings["MSWordAlgorithmSid"],
-        //        Request.QueryString["UserID"]
-        //    );
-        //    //sqlQueryHeadOffice += " where new_invoiceBase.new_invoiceId = '@id'";
-        //    //sqlQueryHeadOffice = sqlQueryHeadOffice.Replace("@id", Request.QueryString["id"]);
-
-
-        //    if (!string.IsNullOrEmpty(empsNo.Text))
-        //    {
-        //        empIds = GlobalCode.ConvertLinesToQuoteComma(empsNo.Text);
-        //        sqlQueryHeadOffice +=
-        //            "  and (  new_EmployeeBase.new_empidnumber in("
-        //            + empIds
-        //            + ") or new_EmployeeBase.new_borderno in("
-        //            + empIds
-        //            + ") or new_EmployeeBase.new_IDNumber in("
-        //            + empIds
-        //            + ") )";
-        //    }
-        //    myds = new DataSet();
-        //    myds = CRMAccessDB.SelectQ(sqlQueryHeadOffice);
-        //    dt = myds.Tables[0];
-        //}
-
-    }
-    //for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
-    for (int i = 0; i < dt.Rows.Count; i++)
-    {
-        string tempText = FileText;
-        // now = Convert.ToDateTime(dt.Rows[rowIndex]["تاريخالفاتورة"].ToString());
-        if (!HeadOffice)
-            tempText = tempText.Replace("تاريخالفاتورة", now.ToString("MM/yyyy"));
-        //for (int i = 0; i < dt.Columns.Count; i++)
-        //{
-        // tempText = tempText.Replace("" + dt.Columns[i].ColumnName, dt.Rows[rowIndex][i].ToString().Replace(".0000000000", "").Replace(".00000000", "").Replace(".0000", ""));
-        string MailContent =
-            @"
+            string tempText = FileText;
+            // now = Convert.ToDateTime(dt.Rows[rowIndex]["تاريخالفاتورة"].ToString());
+            if (!HeadOffice)
+                tempText = tempText.Replace("تاريخالفاتورة", now.ToString("MM/yyyy"));
+            //for (int i = 0; i < dt.Columns.Count; i++)
+            //{
+            // tempText = tempText.Replace("" + dt.Columns[i].ColumnName, dt.Rows[rowIndex][i].ToString().Replace(".0000000000", "").Replace(".00000000", "").Replace(".0000", ""));
+            string MailContent =
+                @"
 <div style='border: 1px solid #999; padding: 10px; margin-bottom: 20px;'><span
         style='font-size: 40px;float: left;line-height: 1;margin-right: 10px;color: #68adff;'>✉</span> 
    "
-            + mailcontent.Text
-            + @"
+                + mailcontent.Text
+                + @"
 </div>
 
 <div style='text-align:center'>
     <p><strong><u>SALARY SLIP</u></strong></p>
     <p><strong><u>Month</u></strong><u>:</u> "
-            + dt.Rows[i]["slipMonth"]
-            + @"
+                + dt.Rows[i]["slipMonth"]
+                + @"
         <strong>|</strong><strong><u>Year</u></strong><u>:</u> "
-            + dt.Rows[i]["slipYear"]
-            + @"
+                + dt.Rows[i]["slipYear"]
+                + @"
     </p>
 </div>
 <table width='100%'
@@ -873,16 +873,16 @@ protected void btnSendToAll_Click(object sender, EventArgs e)
             </td>
             <td width='30%' style='padding: 3px;'>
                 <p><strong>"
-            + dt.Rows[i]["employeenumber"]
-            + @"</strong></p>
+                + dt.Rows[i]["employeenumber"]
+                + @"</strong></p>
             </td>
             <td width='20%' style='padding: 3px; background-color: rgb(149,179,215);' bgcolor='rgb(149,179,215)'>
                 <p><strong>Designation:</strong></p>
             </td>
             <td width='30%' style='padding: 3px;'>
                 <p>"
-            + dt.Rows[i]["ProfX"]
-            + @"</p>
+                + dt.Rows[i]["ProfX"]
+                + @"</p>
             </td>
         </tr>
         <tr>
@@ -891,8 +891,8 @@ protected void btnSendToAll_Click(object sender, EventArgs e)
             </td>
             <td width='30%' style='padding: 3px;'>
                 <p>"
-            + dt.Rows[i]["اسمالموظف"]
-            + @"</p>
+                + dt.Rows[i]["اسمالموظف"]
+                + @"</p>
             </td>
             <td width='20%' style='padding: 3px; background-color: rgb(149,179,215);' bgcolor='rgb(149,179,215)'>
                 <p><strong>Currency</strong><strong>:</strong></p>
@@ -907,8 +907,8 @@ protected void btnSendToAll_Click(object sender, EventArgs e)
             </td>
             <td width='30%' style='padding: 3px;'>
                 <p>"
-            + dt.Rows[i]["اسمالمشروع"]
-            + @"</p>
+                + dt.Rows[i]["اسمالمشروع"]
+                + @"</p>
             </td>
             <td width='20%' style='padding: 3px; background-color: rgb(149,179,215);' bgcolor='rgb(149,179,215)'>
             </td>
@@ -931,8 +931,8 @@ protected void btnSendToAll_Click(object sender, EventArgs e)
             </td>
             <td style='padding: 3px;'>
                 <p>"
-            + dt.Rows[i]["xsal"]
-            + @"</p>
+                + dt.Rows[i]["xsal"]
+                + @"</p>
             </td>
         </tr>
     </tbody>
@@ -958,16 +958,16 @@ protected void btnSendToAll_Click(object sender, EventArgs e)
             </td>
             <td width='25%' style='padding: 3px; border: 1px solid #999;'>
                 <p>"
-            + Math.Round(Convert.ToDecimal(dt.Rows[i]["workDays"]), 2).ToString()
-            + @"</p>
+                + Math.Round(Convert.ToDecimal(dt.Rows[i]["workDays"]), 2).ToString()
+                + @"</p>
             </td>
             <td width='25%' style='padding: 3px; border: 1px solid #999;'>
                 <p><strong>Absence</strong><strong>Amount:</strong></p>
             </td>
             <td width='25%' style='padding: 3px; border: 1px solid #999;'>
                 <p>"
-            + Math.Round(Convert.ToDecimal(dt.Rows[i]["abcded"]), 2).ToString()
-            + @"</p>
+                + Math.Round(Convert.ToDecimal(dt.Rows[i]["abcded"]), 2).ToString()
+                + @"</p>
             </td>
         </tr>
         <tr>
@@ -976,16 +976,16 @@ protected void btnSendToAll_Click(object sender, EventArgs e)
             </td>
             <td width='25%' style='padding: 3px; border: 1px solid #999;'>
                 <p>"
-            + Math.Round(Convert.ToDecimal(dt.Rows[i]["dusalry"]), 2).ToString()
-            + @"</p>
+                + Math.Round(Convert.ToDecimal(dt.Rows[i]["dusalry"]), 2).ToString()
+                + @"</p>
             </td>
             <td width='25%' style='padding: 3px; border: 1px solid #999;'>
                 <p><strong>Company Loans:</strong></p>
             </td>
             <td width='25%' style='padding: 3px; border: 1px solid #999;'>
                 <p>"
-            + Math.Round(Convert.ToDecimal(dt.Rows[i]["emploan"]), 2).ToString()
-            + @"</p>
+                + Math.Round(Convert.ToDecimal(dt.Rows[i]["emploan"]), 2).ToString()
+                + @"</p>
             </td>
         </tr>
         <tr>
@@ -994,16 +994,16 @@ protected void btnSendToAll_Click(object sender, EventArgs e)
             </td>
             <td width='25%' style='padding: 3px; border: 1px solid #999;'>
                 <p>"
-            + Math.Round(Convert.ToDecimal(dt.Rows[i]["ovrTimeAllow"]), 2).ToString()
-            + @"</p>
+                + Math.Round(Convert.ToDecimal(dt.Rows[i]["ovrTimeAllow"]), 2).ToString()
+                + @"</p>
             </td>
             <td width='25%' style='padding: 3px; border: 1px solid #999;'>
                 <p><strong>Customer Loans:</strong></p>
             </td>
             <td width='25%' style='padding: 3px; border: 1px solid #999;'>
                 <p>"
-            + Math.Round(Convert.ToDecimal(dt.Rows[i]["loanamount"]), 2).ToString()
-            + @"</p>
+                + Math.Round(Convert.ToDecimal(dt.Rows[i]["loanamount"]), 2).ToString()
+                + @"</p>
             </td>
         </tr>
         <tr>
@@ -1012,16 +1012,16 @@ protected void btnSendToAll_Click(object sender, EventArgs e)
             </td>
             <td width='25%' style='padding: 3px; border: 1px solid #999;'>
                 <p>"
-            + Math.Round(Convert.ToDecimal(dt.Rows[i]["othIncrease"]), 2).ToString()
-            + @"</p>
+                + Math.Round(Convert.ToDecimal(dt.Rows[i]["othIncrease"]), 2).ToString()
+                + @"</p>
             </td>
             <td width='25%' style='padding: 3px; border: 1px solid #999;'>
                 <p><strong>Other Deductions:</strong></p>
             </td>
             <td width='25%' style='padding: 3px; border: 1px solid #999;'>
                 <p>"
-            + Math.Round(Convert.ToDecimal(dt.Rows[i]["otherdeduction"]), 2).ToString()
-            + @"</p>
+                + Math.Round(Convert.ToDecimal(dt.Rows[i]["otherdeduction"]), 2).ToString()
+                + @"</p>
             </td>
         </tr>
         <tr>
@@ -1032,8 +1032,8 @@ protected void btnSendToAll_Click(object sender, EventArgs e)
             <td width='25%' style='padding: 3px; border: 1px solid #999; background-color: rgb(149,179,215);'
                 bgcolor='rgb(149,179,215)'>
                 <p><strong>"
-            + Math.Round(Convert.ToDecimal(dt.Rows[i]["totCredit"]), 2).ToString()
-            + @"</strong></p>
+                + Math.Round(Convert.ToDecimal(dt.Rows[i]["totCredit"]), 2).ToString()
+                + @"</strong></p>
             </td>
             <td width='25%' style='padding: 3px; border: 1px solid #999; background-color: rgb(149,179,215);'
                 bgcolor='rgb(149,179,215)'>
@@ -1042,8 +1042,8 @@ protected void btnSendToAll_Click(object sender, EventArgs e)
             <td width='25%' style='padding: 3px; border: 1px solid #999; background-color: rgb(149,179,215);'
                 bgcolor='rgb(149,179,215)'>
                 <p><strong>"
-            + Math.Round(Convert.ToDecimal(dt.Rows[i]["totDebit"]), 2).ToString()
-            + @"</strong></p>
+                + Math.Round(Convert.ToDecimal(dt.Rows[i]["totDebit"]), 2).ToString()
+                + @"</strong></p>
             </td>
         </tr>
     </tbody>
@@ -1057,8 +1057,8 @@ protected void btnSendToAll_Click(object sender, EventArgs e)
             <td style='text-align: center; padding: 15px;' width='100%' align='center'>
                 <p><strong>Net Salary</strong> = Total Credit &ndash; Total Debit =
                     <strong>"
-            + Math.Round(Convert.ToDecimal(dt.Rows[i]["netSalary"]), 2).ToString()
-            + @"</strong></p>
+                + Math.Round(Convert.ToDecimal(dt.Rows[i]["netSalary"]), 2).ToString()
+                + @"</strong></p>
             </td>
         </tr>
     </tbody>
@@ -1068,150 +1068,150 @@ protected void btnSendToAll_Click(object sender, EventArgs e)
 
 ";
 
-        string cc = "";
-        //string mailTo = GlobalCode.GetTeamEmails("7d868e34-6315-eb11-a838-000d3abaded5"/*Timesheet Notification Team*/);
-        //string mailTo = "m.hashish@excprotection.com";
-        string mailTo = dt.Rows[i]["EmailAddress"].ToString();
+            string cc = "";
+            //string mailTo = GlobalCode.GetTeamEmails("7d868e34-6315-eb11-a838-000d3abaded5"/*Timesheet Notification Team*/);
+            //string mailTo = "m.hashish@excprotection.com";
+            string mailTo = dt.Rows[i]["EmailAddress"].ToString();
+            try
+            {
+                if (mailTo != "")
+                {
+                    MailSender.SendEmail02(mailTo, cc, "Salary Slip", MailContent, true, "");
+                }
+            }
+            catch (Exception ex) { }
+
+            //  }
+
+            #region OldCode3
+            //string tempFile = System.IO.Path.GetTempPath() + "/SalaryPaySlip" + dt.Rows[rowIndex]["اسمالموظف"].ToString() + ".doc";
+            //System.IO.File.WriteAllText(tempFile, tempText);
+
+            //string EmailAddress = dt.Rows[rowIndex]["EmailAddress"].ToString();
+
+            //tempFile = ConvertDocToPDF(tempText, "salaryslip-" + dt.Rows[rowIndex]["slipMonth"].ToString() + "-" + dt.Rows[rowIndex]["slipYear"].ToString()) + ".pdf";
+            //try
+            //{
+
+            //    string Cogbody = "Greetings of the day !!! <br/>  It's our pleasure to serve you from Esad recruitment company,<br/>  Please find attached pay slip for your kind reference and record.<br/>  We are ready for your kind support at any time .<br/> Thank you,,";
+            //    if (HeadOffice)
+            //    {
+            //        Cogbody = @"<div style='dir:rtl;text-align:right;color:#003a93;'>عزيزي منسوب شركة راحة الأسرة<br/><br>نبارك لك جهدك و ثمرة عطائك<br/>" +
+            //            "مرفق لكم تفاصيل راتب شهر: " + dt.Rows[rowIndex]["slipMonthArabic"].ToString() + " " + dt.Rows[rowIndex]["slipYear"].ToString() +
+            //            "<br/><br/> مع تمنياتنا لك بدوام التوفيق ،،<br/>اساد .. راحة بال</div><hr/>";
+            //        Cogbody += @"<div style='color:#003a93;'>Dear Esad Employee<br/><br/>Thank you for your effort and good work<br/>" +
+            //            "Attached for you Salary Payslip for month: " + dt.Rows[rowIndex]["slipMonth"].ToString() + " " + dt.Rows[rowIndex]["slipYear"].ToString() + "<br/><br/> Best Wishes,,</div>";
+            //    }
+            //    //MailSender.SendEmail02(EmailAddress, ccmail.Text, "Salary Payslip for " + now.ToString("MM/yyyy"), "Salary Payslip for " + now.ToString("MM/yyyy"), false, tempFile);
+            //    if (!string.IsNullOrEmpty(EmailAddress))
+            //        MailSender.SendEmail02(EmailAddress, ccmail.Text, "Salary Payslip for " + now.ToString("MM/yyyy"), Cogbody, false, tempFile);
+            //    //   MailSender.SendEmail02("mgomaa@tamkeenhr.com", ccmail.Text, "Salary Payslip for " + now.ToString("MM/yyyy"), Cogbody, false, tempFile);
+
+            //}
+            //catch (Exception ex)
+            //{
+            //    throw ex;
+            //}
+            #endregion
+        }
+    }
+
+    protected void Button1_Click(object sender, EventArgs e)
+    {
+        Response.Redirect("EmailUpdate.xlsx");
+    }
+
+    public string ConvertDocToPDF(string FileText, string FileName)
+    {
+        string PdfName = "";
+
         try
         {
-            if (mailTo != "")
+            System.IO.DirectoryInfo dir = new System.IO.DirectoryInfo(
+                HttpContext.Current.Server.MapPath("~")
+            );
+            dir = dir.Parent;
+            dir = new System.IO.DirectoryInfo(dir.FullName + "/PDFFiles/");
+            string filePath = @"C:\ISV\PDFFiles\" + DateTime.Now.Ticks.ToString() + FileName;
+            string outPutFile = filePath.Replace(".doc", ".pdf").Replace(".xml", ".pdf");
+            if (System.IO.File.Exists(filePath))
             {
-                MailSender.SendEmail02(mailTo, cc, "Salary Slip", MailContent, true, "");
+                System.IO.File.Delete(filePath);
             }
+
+            if (System.IO.File.Exists(outPutFile))
+            {
+                System.IO.File.Delete(outPutFile);
+            }
+            System.IO.File.WriteAllText(filePath, FileText);
+
+            // Create an instance of Word.exe
+            Microsoft.Office.Interop.Word._Application oWord =
+                new Microsoft.Office.Interop.Word.Application();
+
+            // Make this instance of word invisible (Can still see it in the taskmgr).
+            oWord.Visible = false;
+
+            // Interop requires objects.
+            object oMissing = System.Reflection.Missing.Value;
+            object isVisible = true;
+            object readOnly = false;
+            object oInput = filePath;
+            object oOutput = outPutFile;
+            PdfName = outPutFile;
+            object oFormat = Microsoft.Office.Interop.Word.WdSaveFormat.wdFormatPDF;
+
+            // Load a document into our instance of word.exe
+            Microsoft.Office.Interop.Word._Document oDoc = oWord.Documents.Open(
+                ref oInput,
+                ref oMissing,
+                ref readOnly,
+                ref oMissing,
+                ref oMissing,
+                ref oMissing,
+                ref oMissing,
+                ref oMissing,
+                ref oMissing,
+                ref oMissing,
+                ref oMissing,
+                ref isVisible,
+                ref oMissing,
+                ref oMissing,
+                ref oMissing,
+                ref oMissing
+            );
+
+            // Make this document the active document.
+            oDoc.Activate();
+
+            // Save this document in Word 2003 format.
+            oDoc.SaveAs(
+                ref oOutput,
+                ref oFormat,
+                ref oMissing,
+                ref oMissing,
+                ref oMissing,
+                ref oMissing,
+                ref oMissing,
+                ref oMissing,
+                ref oMissing,
+                ref oMissing,
+                ref oMissing,
+                ref oMissing,
+                ref oMissing,
+                ref oMissing,
+                ref oMissing,
+                ref oMissing
+            );
+
+            oWord.Quit(ref oMissing, ref oMissing, ref oMissing);
+
+            System.IO.FileInfo file = new System.IO.FileInfo(outPutFile);
+            return outPutFile;
         }
-        catch (Exception ex) { }
-
-        //  }
-
-        #region OldCode3
-        //string tempFile = System.IO.Path.GetTempPath() + "/SalaryPaySlip" + dt.Rows[rowIndex]["اسمالموظف"].ToString() + ".doc";
-        //System.IO.File.WriteAllText(tempFile, tempText);
-
-        //string EmailAddress = dt.Rows[rowIndex]["EmailAddress"].ToString();
-
-        //tempFile = ConvertDocToPDF(tempText, "salaryslip-" + dt.Rows[rowIndex]["slipMonth"].ToString() + "-" + dt.Rows[rowIndex]["slipYear"].ToString()) + ".pdf";
-        //try
-        //{
-
-        //    string Cogbody = "Greetings of the day !!! <br/>  It's our pleasure to serve you from Esad recruitment company,<br/>  Please find attached pay slip for your kind reference and record.<br/>  We are ready for your kind support at any time .<br/> Thank you,,";
-        //    if (HeadOffice)
-        //    {
-        //        Cogbody = @"<div style='dir:rtl;text-align:right;color:#003a93;'>عزيزي منسوب شركة راحة الأسرة<br/><br>نبارك لك جهدك و ثمرة عطائك<br/>" +
-        //            "مرفق لكم تفاصيل راتب شهر: " + dt.Rows[rowIndex]["slipMonthArabic"].ToString() + " " + dt.Rows[rowIndex]["slipYear"].ToString() +
-        //            "<br/><br/> مع تمنياتنا لك بدوام التوفيق ،،<br/>اساد .. راحة بال</div><hr/>";
-        //        Cogbody += @"<div style='color:#003a93;'>Dear Esad Employee<br/><br/>Thank you for your effort and good work<br/>" +
-        //            "Attached for you Salary Payslip for month: " + dt.Rows[rowIndex]["slipMonth"].ToString() + " " + dt.Rows[rowIndex]["slipYear"].ToString() + "<br/><br/> Best Wishes,,</div>";
-        //    }
-        //    //MailSender.SendEmail02(EmailAddress, ccmail.Text, "Salary Payslip for " + now.ToString("MM/yyyy"), "Salary Payslip for " + now.ToString("MM/yyyy"), false, tempFile);
-        //    if (!string.IsNullOrEmpty(EmailAddress))
-        //        MailSender.SendEmail02(EmailAddress, ccmail.Text, "Salary Payslip for " + now.ToString("MM/yyyy"), Cogbody, false, tempFile);
-        //    //   MailSender.SendEmail02("mgomaa@tamkeenhr.com", ccmail.Text, "Salary Payslip for " + now.ToString("MM/yyyy"), Cogbody, false, tempFile);
-
-        //}
-        //catch (Exception ex)
-        //{
-        //    throw ex;
-        //}
-        #endregion
-    }
-}
-
-protected void Button1_Click(object sender, EventArgs e)
-{
-    Response.Redirect("EmailUpdate.xlsx");
-}
-
-public string ConvertDocToPDF(string FileText, string FileName)
-{
-    string PdfName = "";
-
-    try
-    {
-        System.IO.DirectoryInfo dir = new System.IO.DirectoryInfo(
-            HttpContext.Current.Server.MapPath("~")
-        );
-        dir = dir.Parent;
-        dir = new System.IO.DirectoryInfo(dir.FullName + "/PDFFiles/");
-        string filePath = @"C:\ISV\PDFFiles\" + DateTime.Now.Ticks.ToString() + FileName;
-        string outPutFile = filePath.Replace(".doc", ".pdf").Replace(".xml", ".pdf");
-        if (System.IO.File.Exists(filePath))
+        catch (Exception ex)
         {
-            System.IO.File.Delete(filePath);
+            return null;
         }
-
-        if (System.IO.File.Exists(outPutFile))
-        {
-            System.IO.File.Delete(outPutFile);
-        }
-        System.IO.File.WriteAllText(filePath, FileText);
-
-        // Create an instance of Word.exe
-        Microsoft.Office.Interop.Word._Application oWord =
-            new Microsoft.Office.Interop.Word.Application();
-
-        // Make this instance of word invisible (Can still see it in the taskmgr).
-        oWord.Visible = false;
-
-        // Interop requires objects.
-        object oMissing = System.Reflection.Missing.Value;
-        object isVisible = true;
-        object readOnly = false;
-        object oInput = filePath;
-        object oOutput = outPutFile;
-        PdfName = outPutFile;
-        object oFormat = Microsoft.Office.Interop.Word.WdSaveFormat.wdFormatPDF;
-
-        // Load a document into our instance of word.exe
-        Microsoft.Office.Interop.Word._Document oDoc = oWord.Documents.Open(
-            ref oInput,
-            ref oMissing,
-            ref readOnly,
-            ref oMissing,
-            ref oMissing,
-            ref oMissing,
-            ref oMissing,
-            ref oMissing,
-            ref oMissing,
-            ref oMissing,
-            ref oMissing,
-            ref isVisible,
-            ref oMissing,
-            ref oMissing,
-            ref oMissing,
-            ref oMissing
-        );
-
-        // Make this document the active document.
-        oDoc.Activate();
-
-        // Save this document in Word 2003 format.
-        oDoc.SaveAs(
-            ref oOutput,
-            ref oFormat,
-            ref oMissing,
-            ref oMissing,
-            ref oMissing,
-            ref oMissing,
-            ref oMissing,
-            ref oMissing,
-            ref oMissing,
-            ref oMissing,
-            ref oMissing,
-            ref oMissing,
-            ref oMissing,
-            ref oMissing,
-            ref oMissing,
-            ref oMissing
-        );
-
-        oWord.Quit(ref oMissing, ref oMissing, ref oMissing);
-
-        System.IO.FileInfo file = new System.IO.FileInfo(outPutFile);
-        return outPutFile;
     }
-    catch (Exception ex)
-    {
-        return null;
-    }
-}
 }
