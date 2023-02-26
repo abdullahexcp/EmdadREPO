@@ -436,7 +436,7 @@ FROM         new_invoiceBase INNER JOIN
             );
 
             var projectInvoiceId = Request.QueryString["id"];
-
+            var empid = Request.QueryString["empid"];
             if (!string.IsNullOrEmpty(projectInvoiceId))
             {
                 salarySlipQuery += " where new_invoiceBase.new_invoiceId = '@id'";
@@ -471,7 +471,16 @@ FROM         new_invoiceBase INNER JOIN
                 }
             }
 
-            if (!string.IsNullOrEmpty(empsNo.Text))
+            if (!string.IsNullOrEmpty(projectId.Text))
+            {
+                salarySlipQuery += " and new_EmployeeBase.new_projectid='" + projectId.Text + "'";
+            }
+
+            if (!string.IsNullOrEmpty(empid))
+            {
+                salarySlipQuery += " and new_EmployeeBase.new_EmployeeId='" + empid + "'";
+            }
+            else if (!string.IsNullOrEmpty(empsNo.Text))
             {
                 empIds = GlobalCode.ConvertLinesToQuoteComma(empsNo.Text);
                 salarySlipQuery +=
@@ -483,9 +492,9 @@ FROM         new_invoiceBase INNER JOIN
                     + empIds
                     + ") )";
             }
+
             DataSet myds = new DataSet();
 
-            
             myds = CRMAccessDB.SelectQ(salarySlipQuery);
             DataTable dt = myds.Tables[0];
             DateTime now = DateTime.Now;
@@ -508,41 +517,6 @@ FROM         new_invoiceBase INNER JOIN
                         Request.QueryString["UserID"]
                     );
                 }
-
-                //if (
-                //    dt.Rows[0]["projid"].ToString().ToLower()
-                //    == "5D1B5CBB-6307-E511-80C6-0050568B1DBC".ToLower()
-                //) //head office. Project
-                //{
-                //    HeadOffice = true;
-                //    FileText = File.ReadAllText(
-                //        Server.MapPath("~/Templates/ProjectInvoice/Salary-Slip-HeadOffice.xml")
-                //    );
-                //    FileText = GlobalCode.ReplaceTempPassword(
-                //        FileText,
-                //        ConfigurationManager.AppSettings["MSWordhash"],
-                //        ConfigurationManager.AppSettings["MSWordsalt"],
-                //        ConfigurationManager.AppSettings["MSWordProviderType"],
-                //        ConfigurationManager.AppSettings["MSWordAlgorithmSid"],
-                //        Request.QueryString["UserID"]
-                //    );
-
-
-
-
-                //   var projectInvoiceId = Request.QueryString["id"];
-
-                //    if (!string.IsNullOrEmpty(projectInvoiceId))
-                //    {
-                //        sqlQueryHeadOffice += " where new_invoiceBase.new_invoiceId = '@id'";
-                //        sqlQueryHeadOffice = sqlQueryHeadOffice.Replace("@id", projectInvoiceId);
-                //    }
-
-
-                //    myds = new DataSet();
-                //    myds = CRMAccessDB.SelectQ(sqlQueryHeadOffice);
-                //    dt = myds.Tables[0];
-                //}
             }
 
             if (!HeadOffice)
