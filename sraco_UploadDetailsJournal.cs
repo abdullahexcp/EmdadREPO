@@ -13,7 +13,36 @@ using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using DocumentFormat.OpenXml.Bibliography;
 
-public partial class AX_UploadDetailsJournal :GlobalPage
+
+public class masterDetails
+{
+    public string journalID { get; set; }
+    public string journalName { get; set; }
+    public string documentNum { get; set; }
+    public DateTime TransDate
+    {
+        set { TransDate = value; }
+        get
+        {
+            return TransDate.ToString("MM/dd/yyyy");
+        }
+    }
+    public string Description { set; get; }
+    public int ledgerJournalACType { set; get; }
+    public string account { set; get; }
+    public string AccountDim { set; get; }
+    public string amountDebit { set; get; }
+    public string AmountCredit { set; get; }
+    public string account { set; get; }
+    public int OffsetaccTyp { set; get; }
+    public int offSetAccountCode { set; get; }
+    public string OffsetDim { set; get; }
+    public string PostingProfile { set; get; }
+    public string bearaerObj { set; get; }
+}
+
+
+public partial class AX_UploadDetailsJournal : GlobalPage
 {
     protected void Page_Load(object sender, EventArgs e)
     {
@@ -55,7 +84,7 @@ public partial class AX_UploadDetailsJournal :GlobalPage
             catch (Exception)
             {
 
-                
+
             }
 
 
@@ -78,368 +107,65 @@ public partial class AX_UploadDetailsJournal :GlobalPage
                 }
 
                 List<DataTable> DtjournalList = dtsource.AsEnumerable()
-                .GroupBy(row => new { 
-                   MapAs= row.Field<string>("MapAS"),
-                   GroupBy= row.Field<string>("GroupBy") })
+                .GroupBy(row => new
+                {
+                    MapAs = row.Field<string>("MapAS"),
+                    GroupBy = row.Field<string>("GroupBy")
+                })
                 .Select(g => g.CopyToDataTable())
                 .ToList();
 
                 foreach (var dt in DtjournalList)
                 {
 
-                  
-                     #region CreateJournalHeader
+
+                    #region CreateJournalHeader
 
 
-                if (txtJournalNum.Text == "")
-                {
-                    //journalID = connector.CreateLedgerHeader(ledgerName, ledgerDesc+"  Createdby "+ usernamesession);
-
-
-                    var returnedData = AXFinanceOperations.CreateLedgerHeader(ledgerName, ledgerDesc + "  Createdby " + usernamesession,
-                        bearaerObj);
-
-                    if (returnedData.IsSuccessful && returnedData.StatusCode == HttpStatusCode.OK)
+                    if (txtJournalNum.Text == "")
                     {
-                        journalID = returnedData.Content;
+                        //journalID = connector.CreateLedgerHeader(ledgerName, ledgerDesc+"  Createdby "+ usernamesession);
 
-                        journalID = Regex.Replace(journalID, @"[^0-9a-zA-Z-]+", "");
+
+                        var returnedData = AXFinanceOperations.CreateLedgerHeader(ledgerName, ledgerDesc + "  Createdby " + usernamesession,
+                            bearaerObj);
+
+                        if (returnedData.IsSuccessful && returnedData.StatusCode == HttpStatusCode.OK)
+                        {
+                            journalID = returnedData.Content;
+
+                            journalID = Regex.Replace(journalID, @"[^0-9a-zA-Z-]+", "");
+                        }
                     }
-                }
-                #endregion
-
-                     #region Create Journal Lines
+                    #endregion
+                    #region Create Journal Lines
 
 
-                if (!string.IsNullOrEmpty(journalID))
-                {
-                    int StartIndex = 0;
-                    if (dt.Rows[0][0].ToString() == "رقم المستند")
-                        StartIndex = 1;
-
-                    for (int i = StartIndex; i < dt.Rows.Count; i++)    //Create Journal Line 
+                    if (!string.IsNullOrEmpty(journalID) || !string.IsNullOrEmpty(InvoiceID))
                     {
+                        int StartIndex = 0;
+                        if (dt.Rows[0][0].ToString() == "رقم المستند")
+                            StartIndex = 1;
 
-                        if (string.IsNullOrEmpty(dt.Rows[i]["AccountType"].ToString())) continue;
-                        
-
-                        string PostingProfile = "";
-                        if (dt.Columns.Contains("PostingProfile"))
-                        {
-                            PostingProfile = dt.Rows[i]["PostingProfile"].ToString();
-                        }
-                        if (dt.Rows[i]["Date"].ToString() == "")
-                        {
-                            continue;
-                        }
-
-
-                        string dimensions = ""; // "BusinessUnit,BU-01,Activity,Recruiting,CostCenter,BR-01,Department,DP-02,Project,projectid,Worker,workerid";
-                        int DescIndex = 0;
-
-                        for (int colIndex = DescIndex; colIndex < dt.Columns.Count; colIndex++)
+                        for (int i = StartIndex; i < dt.Rows.Count; i++)    //Create Journal Line 
                         {
 
-
-
-
-
-                            if (dt.Columns[colIndex].ColumnName == "BusinessUnit")
+                            var details = GetJournalInvoiceDetails(journalID, null);
+                            errorMessage =
+                                            AXFinanceOperations.CreateLineJournalVat(details.journalID, details.documentNum, details.TransDate, details.Description,
+                                            details.ledgerJournalACType, details.account, details.AccountDim, details.amountDebit, details.AmountCredit,
+                                            details.account, details.OffsetaccType, details.offSetAccountCode, "", details.PostingProfile, details.vatGroup, details.VatTaxItem, details.bearaerObj);
+                            if (!errorMessage.IsSuccessful)
                             {
-                                DescIndex = colIndex;
-                            }
-                            if (DescIndex == 0)
-                                continue;
-                            if (dt.Columns[colIndex].ColumnName == "PostingProfile")
-                                break;
-                            if (dt.Rows[i][colIndex].ToString() != "")
-                            {
-                                if (dt.Rows[i][colIndex].ToString().ToLower() != "crm")
-                                {
-                                    var colValue = string.Empty;
-                                    colValue = !String.IsNullOrEmpty(dt.Rows[i][colIndex].ToString()) ? dt.Rows[i][colIndex].ToString() :
-                                                defaultJournalValues_dict.TryGetValue(dt.Columns[colIndex].ColumnName.Trim(), out colValue) ? colValue :
-                                                String.Empty;
-
-                                    dimensions += "," + dt.Columns[colIndex].ColumnName + "," + colValue;
-                                }
-                                else
-                                {
-                                    dimensions += "," + dt.Columns[colIndex].ColumnName + ",@" + dt.Columns[colIndex].ColumnName;
-                                }
-                            }
-                            else
-                            {
-
+                                GlobalCode.addRowToTable(dtError, dt.Rows[i]);
+                                dtError.Rows[dtError.Rows.Count - 1]["Error"] = errorMessage.Content;
                             }
                         }
-                        if (dimensions.Length > 1)
-                        {
-                            dimensions = dimensions.Substring(1);
-                        }
-                        AccountType ledgerJournalACType = 0;
-                        decimal amountDebit = 0;
-                        decimal AmountCredit = 0;
-                        string AccountDim = "";
-                        string dimensionDesc = "trans01";
-                        string Description = "";
-                        string account = "";
-                        string documentNum = "";
-                        AccountType OffsetAccountType = 0;
-                        string offSetAccountCode = "";
-                        string OffsetDim = "";
-                        DateTime TransDate = DateTime.Now;
-
-                        try
-                        {
-                            documentNum = dt.Rows[i][0].ToString();
-                            Description = dt.Rows[i]["Description"].ToString();
-                            if (dt.Rows[i]["Date"].ToString() != "")
-                            {
-                                if (dt.Rows[i]["Date"] is DateTime)
-                                {
-                                    TransDate = (DateTime)dt.Rows[i]["Date"];
-                                }
-                                else if (dt.Rows[i]["Date"].ToString().Length > 10)
-                                {
-                                    string strdate = dt.Rows[i]["Date"].ToString().Substring(0, 10);
-                                    try
-                                    {
-
-                                        TransDate = DateTime.ParseExact(strdate, "yyyy-MM-dd", new System.Globalization.CultureInfo("en-US"));
-
-                                    }
-                                    catch (Exception exc)
-                                    {
-                                        TransDate = DateTime.ParseExact(strdate, allFormats, new System.Globalization.CultureInfo("en-US"), System.Globalization.DateTimeStyles.None);
-                                    }
-                                }
-                                else
-                                {
-                                    int days = 0;
-                                    string strdate = dt.Rows[i]["Date"].ToString();
-                                    if (int.TryParse(strdate, out days))
-                                    {
-
-                                        if (days > 59) days -= 1; //Excel/Lotus 2/29/1900 bug   
-                                        TransDate = new DateTime(1899, 12, 31).AddDays(days);
-                                    }
-                                    else
-                                    {
-
-
-
-                                        TransDate = DateTime.ParseExact(strdate, allFormats, new System.Globalization.CultureInfo("en-US"), System.Globalization.DateTimeStyles.None);
-                                    }
-
-                                }
-                            }
-
-                            if (dt.Rows[i]["Debit"].ToString() != "")
-                            {
-                                amountDebit = decimal.Parse(dt.Rows[i]["Debit"].ToString());
-                                if (amountDebit > 0)
-                                {
-                                    amountDebit = Math.Round(amountDebit, 2);
-
-                                }
-                            }
-                            if (dt.Rows[i]["Credit"].ToString() != "")
-                            {
-                                AmountCredit = decimal.Parse(dt.Rows[i]["Credit"].ToString());
-                                if (AmountCredit > 0)
-                                {
-                                    AmountCredit = Math.Round(AmountCredit, 2);
-
-                                }
-                            }
-                            AccountDim = "";
-                            OffsetDim = "";
-                            offSetAccountCode = "";
-                            OffsetAccountType = 0;
-
-
-
-                            if (dt.Rows[i]["AccountType"].ToString() != "" && dt.Rows[i]["AccountCode"].ToString() != "")
-                            {
-                                ledgerJournalACType = (AccountType)Enum.Parse(typeof(AccountType), dt.Rows[i]["AccountType"].ToString());
-                                account = dt.Rows[i]["AccountCode"].ToString();//.ToString().Replace("P", "C");
-                                                                               //  if (ledgerJournalACType == AccountType.Ledger)
-                                {
-                                    //AccountDim = dimensions;
-
-                                    //if (dt.Rows[i]["Worker"].ToString() != "")
-                                    //{
-                                    //    string idSearch = dt.Rows[i]["Worker"].ToString();
-                                    //    AccountDim = dimensions = GetCostCenters(idSearch, AccountDim);
-                                    //}
-                                }
-                                AccountType OffsetaccType = AccountType.Bank;
-                                if (dt.Rows[i]["OffsetAccontType"].ToString() != "" && dt.Rows[i]["OffsetAccontCode"].ToString() != "")
-                                {
-
-                                    offSetAccountCode = dt.Rows[i]["OffsetAccontCode"].ToString();
-                                    OffsetaccType = (AccountType)Enum.Parse(typeof(AccountType), dt.Rows[i]["OffsetAccontType"].ToString());
-
-                                    ////if (accType == AccountType.Ledger)
-                                    //{
-                                    //    OffsetDim = dimensions;
-                                    //    if (dt.Rows[i]["Worker"].ToString() != "")
-                                    //    {
-                                    //        string idSearch = dt.Rows[i]["Worker"].ToString();
-                                    //        OffsetDim = GetCostCenters(idSearch, OffsetDim);
-                                    //    }
-                                    //}
-
-                                }
-
-
-
-
-                                //dimensions = BusinessUnitDim;
-
-                                /* // ============= new implementation (MKH) =======================================
-                                 var workerId = dt.Rows[i]["Worker"].ToString();
-                                 var JournalDimensionMapper = new JournalDimensionMapper(workerId, defaultJournalValues_dict);
-                                 AccountDim = dimensions = JournalDimensionMapper.MapAllCostCenterDimensions(dimensions);
-                                 // ==============================================================================
-                                 if(!chkIsFixedAsset.Checked)
-                                 {
-                                     string transCreditID = connector.CreateLineJournal(journalID, documentNum, TransDate.ToString("MM/dd/yyyy"), Description, (int)ledgerJournalACType, account, AccountDim, amountDebit, AmountCredit, account, (int)OffsetaccType, offSetAccountCode, dimensions, PostingProfile);
-                                 }
-                                 else
-                                 {
-                                     string TransactionType = dt.Rows[i]["TransactionType"].ToString();
-                                     string transCreditID = connector.CreateLineJournalFA(journalID, documentNum, TransDate.ToString("MM/dd/yyyy"), Description, (int)ledgerJournalACType, account, AccountDim, amountDebit, AmountCredit, account, (int)OffsetaccType, offSetAccountCode, dimensions, PostingProfile, TransactionType);
-                                 }
-                                 */
-
-
-
-
-
-
-                                // ============= new implementation (MKH) =======================================
-                                if (dt.Columns.Contains("Worker"))
-                                {
-                                    var workerId = dt.Rows[i]["Worker"].ToString();
-                                    if (!string.IsNullOrEmpty(workerId.ToString()))
-                                    {
-                                        var JournalDimensionMapper = new JournalDimensionMapper(workerId, defaultJournalValues_dict);
-                                        AccountDim = dimensions = JournalDimensionMapper.MapAllCostCenterDimensions(dimensions);
-
-                                    }
-                                    else
-                                    {
-
-
-                                    }
-
-
-                                }
-
-
-                                if (dt.Columns.Contains("Customer"))
-                                {
-                                    var customerId = dt.Rows[i]["Customer"].ToString();
-                                    if (!string.IsNullOrEmpty(customerId.ToString()))
-                                    {
-                                        var JournalDimensionMapper = new JournalDimensionMapper(customerId, defaultJournalValues_dict);
-                                        AccountDim = dimensions = JournalDimensionMapper.MapAllCostCenterDimensions(dimensions);
-
-                                    }
-                                    else
-                                    {
-
-
-                                    }
-
-
-                                }
-
-
-
-
-
-
-
-                                if (!chkIsFixedAsset.Checked)
-                                    {
-                                        if (dt.Columns.Contains("VatGroup"))
-                                        {
-                                            string vatGroup = dt.Rows[i]["VatGroup"].ToString().Replace(" ", "");
-
-                                            string VatTaxItem = "VAT";
-                                            if (string.IsNullOrEmpty(AccountDim))
-                                                AccountDim = dimensions;
-                                        //string transCreditID = connector.CreateLineJournalVat(journalID, documentNum, TransDate.ToString("MM/dd/yyyy"), Description, (int)ledgerJournalACType, account, AccountDim, amountDebit, AmountCredit, account, (int)OffsetaccType, offSetAccountCode, OffsetDim, PostingProfile, vatGroup, VatTaxItem);
-
-                                        errorMessage =
-                                            AXFinanceOperations.CreateLineJournalVat(journalID, documentNum, TransDate.ToString("MM/dd/yyyy"), Description, (int)ledgerJournalACType, account, AccountDim, amountDebit, AmountCredit, account, (int)OffsetaccType, offSetAccountCode, OffsetDim, PostingProfile, vatGroup, VatTaxItem, bearaerObj);
-
-                                    }
-                                    else
-                                        {
-
-                                            if (string.IsNullOrEmpty(AccountDim))
-                                                AccountDim = dimensions;
-                                        // string transCreditID = connector.CreateLineJournal(journalID, documentNum, TransDate.ToString("MM/dd/yyyy"), Description, (int)ledgerJournalACType, account, AccountDim, amountDebit, AmountCredit, account, (int)OffsetaccType, offSetAccountCode, OffsetDim, PostingProfile);
-
-                                        errorMessage = 
-                                            AXFinanceOperations.CreateLineJournal(journalID, documentNum, TransDate.ToString("MM/dd/yyyy"), Description, (int)ledgerJournalACType, account, AccountDim, amountDebit, AmountCredit, account, (int)OffsetaccType, offSetAccountCode, OffsetDim, PostingProfile, bearaerObj);
-
-
-                                    }
-
-                                   
-
-
-                                }
-                                    else
-                                    {
-                                        string vatGroup = dt.Rows[i]["VatGroup"].ToString().Replace(" ", "");
-                                        string VatTaxItem = "VAT";
-                                        if (string.IsNullOrEmpty(AccountDim))
-                                            AccountDim = dimensions;
-                                        string TransactionType = dt.Rows[i]["TransactionType"].ToString();
-                                    // string transCreditID = connector.CreateLineJournalFA(journalID, documentNum, TransDate.ToString("MM/dd/yyyy"), Description, (int)ledgerJournalACType, account, AccountDim, amountDebit, AmountCredit, account, (int)OffsetaccType, offSetAccountCode, "", PostingProfile, TransactionType,vatGroup,VatTaxItem );
-
-                                    errorMessage =
-                                               AXFinanceOperations.CreateLineJournalVat(journalID, documentNum, TransDate.ToString("MM/dd/yyyy"), Description, (int)ledgerJournalACType, account, AccountDim, amountDebit, AmountCredit, account, (int)OffsetaccType, offSetAccountCode, "", PostingProfile, vatGroup, VatTaxItem, bearaerObj);
-
-
-                                }
-
-
-                                if (!errorMessage.IsSuccessful)
-                                {
-                                    GlobalCode.addRowToTable(dtError, dt.Rows[i]);
-                                    dtError.Rows[dtError.Rows.Count - 1]["Error"] = errorMessage.Content;
-                                }
-
-
-                            }
-
-                        }
-                        catch (Exception exc)
-                        {
-
-                            GlobalCode.addRowToTable(dtError, dt.Rows[i]);
-                            dtError.Rows[dtError.Rows.Count - 1]["Error"] = exc.ToString();
-                            lblError.Text = exc.ToString();
-                        }
-
                     }
-                }
                     #endregion
 
 
                 }
-
-               
-
-
-
 
 
                 DtjournalList = null;
@@ -456,7 +182,314 @@ public partial class AX_UploadDetailsJournal :GlobalPage
         Response.Write("Done");
     }
 
-    public string CreateFreeInvoiceHeader(string Customer,string DocNumber,DateTime Duedate,AXObject bearaerObj)
+
+    public masterDetails GetJournalInvoiceDetails(int i, DataTable dt)
+    {
+       
+
+                if (string.IsNullOrEmpty(dt.Rows[i]["AccountType"].ToString())) continue;
+
+
+                string PostingProfile = "";
+                if (dt.Columns.Contains("PostingProfile"))
+                {
+                    PostingProfile = dt.Rows[i]["PostingProfile"].ToString();
+                }
+                if (dt.Rows[i]["Date"].ToString() == "")
+                {
+                    continue;
+                }
+
+
+                string dimensions = ""; // "BusinessUnit,BU-01,Activity,Recruiting,CostCenter,BR-01,Department,DP-02,Project,projectid,Worker,workerid";
+                int DescIndex = 0;
+
+                for (int colIndex = DescIndex; colIndex < dt.Columns.Count; colIndex++)
+                {
+
+
+
+
+
+                    if (dt.Columns[colIndex].ColumnName == "BusinessUnit")
+                    {
+                        DescIndex = colIndex;
+                    }
+                    if (DescIndex == 0)
+                        continue;
+                    if (dt.Columns[colIndex].ColumnName == "PostingProfile")
+                        break;
+                    if (dt.Rows[i][colIndex].ToString() != "")
+                    {
+                        if (dt.Rows[i][colIndex].ToString().ToLower() != "crm")
+                        {
+                            var colValue = string.Empty;
+                            colValue = !String.IsNullOrEmpty(dt.Rows[i][colIndex].ToString()) ? dt.Rows[i][colIndex].ToString() :
+                                        defaultJournalValues_dict.TryGetValue(dt.Columns[colIndex].ColumnName.Trim(), out colValue) ? colValue :
+                                        String.Empty;
+
+                            dimensions += "," + dt.Columns[colIndex].ColumnName + "," + colValue;
+                        }
+                        else
+                        {
+                            dimensions += "," + dt.Columns[colIndex].ColumnName + ",@" + dt.Columns[colIndex].ColumnName;
+                        }
+                    }
+                    else
+                    {
+
+                    }
+                }
+                if (dimensions.Length > 1)
+                {
+                    dimensions = dimensions.Substring(1);
+                }
+                AccountType ledgerJournalACType = 0;
+                decimal amountDebit = 0;
+                decimal AmountCredit = 0;
+                string AccountDim = "";
+                string dimensionDesc = "trans01";
+                string Description = "";
+                string account = "";
+                string documentNum = "";
+                AccountType OffsetAccountType = 0;
+                string offSetAccountCode = "";
+                string OffsetDim = "";
+                DateTime TransDate = DateTime.Now;
+
+                try
+                {
+                    documentNum = dt.Rows[i][0].ToString();
+                    Description = dt.Rows[i]["Description"].ToString();
+                    if (dt.Rows[i]["Date"].ToString() != "")
+                    {
+                        if (dt.Rows[i]["Date"] is DateTime)
+                        {
+                            TransDate = (DateTime)dt.Rows[i]["Date"];
+                        }
+                        else if (dt.Rows[i]["Date"].ToString().Length > 10)
+                        {
+                            string strdate = dt.Rows[i]["Date"].ToString().Substring(0, 10);
+                            try
+                            {
+
+                                TransDate = DateTime.ParseExact(strdate, "yyyy-MM-dd", new System.Globalization.CultureInfo("en-US"));
+
+                            }
+                            catch (Exception exc)
+                            {
+                                TransDate = DateTime.ParseExact(strdate, allFormats, new System.Globalization.CultureInfo("en-US"), System.Globalization.DateTimeStyles.None);
+                            }
+                        }
+                        else
+                        {
+                            int days = 0;
+                            string strdate = dt.Rows[i]["Date"].ToString();
+                            if (int.TryParse(strdate, out days))
+                            {
+
+                                if (days > 59) days -= 1; //Excel/Lotus 2/29/1900 bug   
+                                TransDate = new DateTime(1899, 12, 31).AddDays(days);
+                            }
+                            else
+                            {
+
+
+
+                                TransDate = DateTime.ParseExact(strdate, allFormats, new System.Globalization.CultureInfo("en-US"), System.Globalization.DateTimeStyles.None);
+                            }
+
+                        }
+                    }
+
+                    if (dt.Rows[i]["Debit"].ToString() != "")
+                    {
+                        amountDebit = decimal.Parse(dt.Rows[i]["Debit"].ToString());
+                        if (amountDebit > 0)
+                        {
+                            amountDebit = Math.Round(amountDebit, 2);
+
+                        }
+                    }
+                    if (dt.Rows[i]["Credit"].ToString() != "")
+                    {
+                        AmountCredit = decimal.Parse(dt.Rows[i]["Credit"].ToString());
+                        if (AmountCredit > 0)
+                        {
+                            AmountCredit = Math.Round(AmountCredit, 2);
+
+                        }
+                    }
+                    AccountDim = "";
+                    OffsetDim = "";
+                    offSetAccountCode = "";
+                    OffsetAccountType = 0;
+
+
+
+                    if (dt.Rows[i]["AccountType"].ToString() != "" && dt.Rows[i]["AccountCode"].ToString() != "")
+                    {
+                        ledgerJournalACType = (AccountType)Enum.Parse(typeof(AccountType), dt.Rows[i]["AccountType"].ToString());
+                        account = dt.Rows[i]["AccountCode"].ToString();//.ToString().Replace("P", "C");
+                                                                       //  if (ledgerJournalACType == AccountType.Ledger)
+                        {
+                            //AccountDim = dimensions;
+
+                            //if (dt.Rows[i]["Worker"].ToString() != "")
+                            //{
+                            //    string idSearch = dt.Rows[i]["Worker"].ToString();
+                            //    AccountDim = dimensions = GetCostCenters(idSearch, AccountDim);
+                            //}
+                        }
+                        AccountType OffsetaccType = AccountType.Bank;
+                        if (dt.Rows[i]["OffsetAccontType"].ToString() != "" && dt.Rows[i]["OffsetAccontCode"].ToString() != "")
+                        {
+
+                            offSetAccountCode = dt.Rows[i]["OffsetAccontCode"].ToString();
+                            OffsetaccType = (AccountType)Enum.Parse(typeof(AccountType), dt.Rows[i]["OffsetAccontType"].ToString());
+
+                            ////if (accType == AccountType.Ledger)
+                            //{
+                            //    OffsetDim = dimensions;
+                            //    if (dt.Rows[i]["Worker"].ToString() != "")
+                            //    {
+                            //        string idSearch = dt.Rows[i]["Worker"].ToString();
+                            //        OffsetDim = GetCostCenters(idSearch, OffsetDim);
+                            //    }
+                            //}
+
+                        }
+
+
+
+
+                        //dimensions = BusinessUnitDim;
+
+                        /* // ============= new implementation (MKH) =======================================
+                         var workerId = dt.Rows[i]["Worker"].ToString();
+                         var JournalDimensionMapper = new JournalDimensionMapper(workerId, defaultJournalValues_dict);
+                         AccountDim = dimensions = JournalDimensionMapper.MapAllCostCenterDimensions(dimensions);
+                         // ==============================================================================
+                         if(!chkIsFixedAsset.Checked)
+                         {
+                             string transCreditID = connector.CreateLineJournal(journalID, documentNum, TransDate.ToString("MM/dd/yyyy"), Description, (int)ledgerJournalACType, account, AccountDim, amountDebit, AmountCredit, account, (int)OffsetaccType, offSetAccountCode, dimensions, PostingProfile);
+                         }
+                         else
+                         {
+                             string TransactionType = dt.Rows[i]["TransactionType"].ToString();
+                             string transCreditID = connector.CreateLineJournalFA(journalID, documentNum, TransDate.ToString("MM/dd/yyyy"), Description, (int)ledgerJournalACType, account, AccountDim, amountDebit, AmountCredit, account, (int)OffsetaccType, offSetAccountCode, dimensions, PostingProfile, TransactionType);
+                         }
+                         */
+
+
+
+
+
+
+                        // ============= new implementation (MKH) =======================================
+                        if (dt.Columns.Contains("Worker"))
+                        {
+                            var workerId = dt.Rows[i]["Worker"].ToString();
+                            if (!string.IsNullOrEmpty(workerId.ToString()))
+                            {
+                                var JournalDimensionMapper = new JournalDimensionMapper(workerId, defaultJournalValues_dict);
+                                AccountDim = dimensions = JournalDimensionMapper.MapAllCostCenterDimensions(dimensions);
+
+                            }
+                            else
+                            {
+
+
+                            }
+
+
+                        }
+
+
+                        if (dt.Columns.Contains("Customer"))
+                        {
+                            var customerId = dt.Rows[i]["Customer"].ToString();
+                            if (!string.IsNullOrEmpty(customerId.ToString()))
+                            {
+                                var JournalDimensionMapper = new JournalDimensionMapper(customerId, defaultJournalValues_dict);
+                                AccountDim = dimensions = JournalDimensionMapper.MapAllCostCenterDimensions(dimensions);
+
+                            }
+                            else
+                            {
+
+
+                            }
+
+
+                        }
+
+
+
+
+
+
+
+                        if (!chkIsFixedAsset.Checked)
+                        {
+                            if (dt.Columns.Contains("VatGroup"))
+                            {
+                                string vatGroup = dt.Rows[i]["VatGroup"].ToString().Replace(" ", "");
+
+                                string VatTaxItem = "VAT";
+                                if (string.IsNullOrEmpty(AccountDim))
+                                    AccountDim = dimensions;
+                                //string transCreditID = connector.CreateLineJournalVat(journalID, documentNum, TransDate.ToString("MM/dd/yyyy"), Description, (int)ledgerJournalACType, account, AccountDim, amountDebit, AmountCredit, account, (int)OffsetaccType, offSetAccountCode, OffsetDim, PostingProfile, vatGroup, VatTaxItem);
+
+                                return new masterDetails(journalID, documentNum, TransDate.ToString("MM/dd/yyyy"), Description, (int)ledgerJournalACType, account, AccountDim, amountDebit, AmountCredit, account, (int)OffsetaccType, offSetAccountCode, OffsetDim, PostingProfile, vatGroup, VatTaxItem, bearaerObj);
+
+                            }
+                            else
+                            {
+
+                                if (string.IsNullOrEmpty(AccountDim))
+                                    AccountDim = dimensions;
+                                // string transCreditID = connector.CreateLineJournal(journalID, documentNum, TransDate.ToString("MM/dd/yyyy"), Description, (int)ledgerJournalACType, account, AccountDim, amountDebit, AmountCredit, account, (int)OffsetaccType, offSetAccountCode, OffsetDim, PostingProfile);
+
+                                return new masterDetails(journalID, documentNum, TransDate.ToString("MM/dd/yyyy"), Description, (int)ledgerJournalACType, account, AccountDim, amountDebit, AmountCredit, account, (int)OffsetaccType, offSetAccountCode, OffsetDim, PostingProfile, bearaerObj);
+
+
+                            }
+
+
+
+
+                        }
+                        else
+                        {
+                            string vatGroup = dt.Rows[i]["VatGroup"].ToString().Replace(" ", "");
+                            string VatTaxItem = "VAT";
+                            if (string.IsNullOrEmpty(AccountDim))
+                                AccountDim = dimensions;
+                            string TransactionType = dt.Rows[i]["TransactionType"].ToString();
+                            // string transCreditID = connector.CreateLineJournalFA(journalID, documentNum, TransDate.ToString("MM/dd/yyyy"), Description, (int)ledgerJournalACType, account, AccountDim, amountDebit, AmountCredit, account, (int)OffsetaccType, offSetAccountCode, "", PostingProfile, TransactionType,vatGroup,VatTaxItem );
+
+                            return new masterDetails(journalID, documentNum, TransDate.ToString("MM/dd/yyyy"), Description, (int)ledgerJournalACType, account, AccountDim, amountDebit, AmountCredit, account, (int)OffsetaccType, offSetAccountCode, "", PostingProfile, vatGroup, VatTaxItem, bearaerObj);
+
+
+                        }
+
+
+                    }
+
+                }
+                catch (Exception exc)
+                {
+
+                    GlobalCode.addRowToTable(dtError, dt.Rows[i]);
+                    dtError.Rows[dtError.Rows.Count - 1]["Error"] = exc.ToString();
+                    lblError.Text = exc.ToString();
+                }
+
+            
+    }
+
+    public string CreateFreeInvoiceHeader(string Customer, string DocNumber, DateTime Duedate, AXObject bearaerObj)
     {
 
         FreeTextInvoiceHeaders freetextinvoice = new FreeTextInvoiceHeaders()
@@ -483,8 +516,8 @@ public partial class AX_UploadDetailsJournal :GlobalPage
 
     }
 
-    public string CreateFreeInvoiceLines(string journalID,string  AccountCode, string LedgerAccount,string Description
-        ,DataRow dr,decimal amountDebit, decimal AmountCredit,AXObject bearaerObj)
+    public string CreateFreeInvoiceLines(string journalID, string AccountCode, string LedgerAccount, string Description
+        , DataRow dr, decimal amountDebit, decimal AmountCredit, AXObject bearaerObj)
     {
         FreeTextInvoiceLines InvoiceLines = new FreeTextInvoiceLines()
         {
@@ -509,7 +542,7 @@ public partial class AX_UploadDetailsJournal :GlobalPage
         InvoiceLines.TaxItemGroup = salesTaxItem;
         InvoiceLines.VatGroup = VatGroup;
 
-       var errorMessage = AXFinanceOperations.CreateFreeTextInvoiceLines(InvoiceLines, bearaerObj);
+        var errorMessage = AXFinanceOperations.CreateFreeTextInvoiceLines(InvoiceLines, bearaerObj);
         return errorMessage.Content.ToString();
     }
 

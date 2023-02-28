@@ -9,6 +9,7 @@ using System.Web.UI.WebControls;
 using System.Xml;
 using System.Configuration;
 using ConvertToExcel;
+using System.Web.Script.Serialization;
 
 public partial class Templates_ProjectInvoice_PrintSalary : GlobalPage
 {
@@ -203,8 +204,27 @@ FROM         new_invoiceBase INNER JOIN
                       new_projectBase ON new_invoiceBase.new_projectId = new_projectBase.new_projectId   
 					  left outer join new_professionBase on new_professionBase.new_professionId=new_EmployeeBase.new_professionid  
 ";
+    public string optionsJson = string.Empty; 
+    public List<SelectListItem> GetProjectsSelectList()
+    {
+        var result = CRMAccessDB.SelectQ("select new_projectid ,new_name from new_project where statecode = 0");
+        var projectsSelectList = new List<SelectListItem>();
+        DataTable dt = result.Tables[0];
+        if (dt.Rows.Count > 0)
+        {
+            foreach(DataRow row in dt.Rows)
+            {
+                projectsSelectList.Add(new SelectListItem (row["new_projectid"].ToString(), row["new_name"].ToString() ));
+            }
+        }
+        return projectsSelectList;
+    }
 
-    protected void Page_Load(object sender, EventArgs e) { }
+    protected void Page_Load(object sender, EventArgs e)
+    {
+        var projectsSelectList = GetProjectsSelectList();
+        optionsJson = new JavaScriptSerializer().Serialize(projectsSelectList);
+    }
 
     protected void BtnDownloadVertas_Click(object sender, EventArgs e)
     {
@@ -436,55 +456,63 @@ FROM         new_invoiceBase INNER JOIN
             );
 
             var projectInvoiceId = Request.QueryString["id"];
+            string projectId = Request.Form["project-selected"];
             var empid = Request.QueryString["empid"];
+
+            salarySlipQuery += "Where ";
+
             if (!string.IsNullOrEmpty(projectInvoiceId))
             {
-                salarySlipQuery += " where new_invoiceBase.new_invoiceId = '@id'";
+                salarySlipQuery += " new_invoiceBase.new_invoiceId = '@id'";
                 salarySlipQuery = salarySlipQuery.Replace("@id", projectInvoiceId);
+            }
+
+            if (string.IsNullOrEmpty(fromdate.Text))
+            {
+                if (!salarySlipQuery.EndsWith("Where "))
+                    salarySlipQuery += " and ";
+                salarySlipQuery += "YEAR(new_invoiceBase.new_fromdate) = YEAR(GETDATE())";
             }
             else
             {
-                salarySlipQuery += "Where ";
-
-                if (string.IsNullOrEmpty(fromdate.Text))
-                {
-                    salarySlipQuery += "YEAR(new_invoiceBase.new_fromdate) = YEAR(GETDATE())";
-                }
-                else
-                {
-                    salarySlipQuery +=
-                        "new_invoiceBase.new_fromdate >= CONVERT(datetime, '"
-                        + fromdate.Text
-                        + "')";
-                }
-
-                if (string.IsNullOrEmpty(todate.Text))
-                {
-                    salarySlipQuery += " and YEAR(new_invoiceBase.new_todate) = YEAR(GETDATE())";
-                }
-                else
-                {
-                    salarySlipQuery +=
-                        " and new_invoiceBase.new_todate <= CONVERT(datetime, '"
-                        + todate.Text
-                        + "')";
-                }
+                if (!salarySlipQuery.EndsWith("Where "))
+                    salarySlipQuery += " and ";
+                salarySlipQuery +=
+                    "new_invoiceBase.new_fromdate >= CONVERT(datetime, '" + fromdate.Text + "')";
             }
 
-            if (!string.IsNullOrEmpty(projectId.Text))
+            if (string.IsNullOrEmpty(todate.Text))
             {
-                salarySlipQuery += " and new_EmployeeBase.new_projectid='" + projectId.Text + "'";
+                if (!salarySlipQuery.EndsWith("Where "))
+                    salarySlipQuery += " and ";
+                salarySlipQuery += "YEAR(new_invoiceBase.new_todate) = YEAR(GETDATE())";
+            }
+            else
+            {
+                salarySlipQuery +=
+                    " and new_invoiceBase.new_todate <= CONVERT(datetime, '" + todate.Text + "')";
+            }
+
+            if (!string.IsNullOrEmpty(projectId))
+            {
+                if (!salarySlipQuery.EndsWith("Where "))
+                    salarySlipQuery += " and ";
+                salarySlipQuery += "new_invoicdetailBase.new_projectid='" + projectId + "'";
             }
 
             if (!string.IsNullOrEmpty(empid))
             {
-                salarySlipQuery += " and new_EmployeeBase.new_EmployeeId='" + empid + "'";
+                if (!salarySlipQuery.EndsWith("Where "))
+                    salarySlipQuery += " and ";
+                salarySlipQuery += "new_EmployeeBase.new_EmployeeId='" + empid + "'";
             }
             else if (!string.IsNullOrEmpty(empsNo.Text))
             {
                 empIds = GlobalCode.ConvertLinesToQuoteComma(empsNo.Text);
+                if (!salarySlipQuery.EndsWith("Where "))
+                    salarySlipQuery += " and ";
                 salarySlipQuery +=
-                    "  and (  new_EmployeeBase.new_empidnumber in("
+                    "(  new_EmployeeBase.new_empidnumber in("
                     + empIds
                     + ") or new_EmployeeBase.new_borderno in("
                     + empIds
@@ -493,8 +521,14 @@ FROM         new_invoiceBase INNER JOIN
                     + ") )";
             }
 
-            DataSet myds = new DataSet();
+            //remove unused where clause
+            if (salarySlipQuery.EndsWith("Where "))
+            {
+                salarySlipQuery = salarySlipQuery.Substring(0, salarySlipQuery.Length - 6);
+            }
 
+            DataSet myds = new DataSet();
+            Response.Write(projectId);
             myds = CRMAccessDB.SelectQ(salarySlipQuery);
             DataTable dt = myds.Tables[0];
             DateTime now = DateTime.Now;
@@ -1188,5 +1222,17 @@ FROM         new_invoiceBase INNER JOIN
         {
             return null;
         }
+    }
+}
+
+public class SelectListItem
+{
+    public string Value { get; set; }
+    public string Text { get; set; }
+
+    public SelectListItem(string value, string text)
+    {
+        Value = value;
+        Text = text;
     }
 }
