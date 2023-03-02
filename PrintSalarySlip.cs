@@ -204,7 +204,7 @@ FROM         new_invoiceBase INNER JOIN
                       new_projectBase ON new_invoiceBase.new_projectId = new_projectBase.new_projectId   
 					  left outer join new_professionBase on new_professionBase.new_professionId=new_EmployeeBase.new_professionid  
 ";
-    public string optionsJson = string.Empty; 
+    public string optionsJson = string.Empty;
     public List<SelectListItem> GetProjectsSelectList()
     {
         var result = CRMAccessDB.SelectQ("select new_projectid ,new_name from new_project");
@@ -212,18 +212,25 @@ FROM         new_invoiceBase INNER JOIN
         DataTable dt = result.Tables[0];
         if (dt.Rows.Count > 0)
         {
-            foreach(DataRow row in dt.Rows)
+            foreach (DataRow row in dt.Rows)
             {
-                projectsSelectList.Add(new SelectListItem (row["new_projectid"].ToString(), row["new_name"].ToString() ));
+                projectsSelectList.Add(new SelectListItem(row["new_projectid"].ToString(), row["new_name"].ToString()));
             }
         }
         return projectsSelectList;
     }
 
+    public string DisplayEmployeeNoField = string.Empty;
+
     protected void Page_Load(object sender, EventArgs e)
     {
         var projectsSelectList = GetProjectsSelectList();
         optionsJson = new JavaScriptSerializer().Serialize(projectsSelectList);
+        var empid = Request.QueryString["empid"];
+        if (!string.IsNullOrEmpty(empid))
+        {
+            DisplayEmployeeNoField = "style='display:none'";
+        }
     }
 
     protected void BtnDownloadVertas_Click(object sender, EventArgs e)
@@ -521,7 +528,7 @@ FROM         new_invoiceBase INNER JOIN
                     + ") )";
             }
             if (!salarySlipQuery.EndsWith("Where "))
-                    salarySlipQuery += " and ";
+                salarySlipQuery += " and ";
             salarySlipQuery += " new_invoiceBase.new_invoicetype <> 100000002   order by new_invoiceBase.new_fromdate";
 
             //remove unused where clause

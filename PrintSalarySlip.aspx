@@ -118,7 +118,7 @@ Inherits="Templates_ProjectInvoice_PrintSalary" Async="true" %>
             </td>
           </tr>
 
-          <tr>
+          <tr <%= DisplayEmployeeNoField %>>
             <td class="auto-style1">
               <br />
               <br />
@@ -232,35 +232,35 @@ Inherits="Templates_ProjectInvoice_PrintSalary" Async="true" %>
 
       var options = <%= optionsJson %>;
 
-      $(document).ready(function () {
-        const fromDateInput = document.getElementById("fromdate");
-        const toDateInput = document.getElementById("todate");
+        $(document).ready(function () {
+            const fromDateInput = document.getElementById("fromdate");
+            const toDateInput = document.getElementById("todate");
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const id = urlParams.get("id");
-        if (id && id != null) {
-          fromDateInput.value = "";
-          toDateInput.value = "";
-        } else {
-          fromDateInput.value = new Date(new Date().getFullYear(), 0, 2)
-            .toISOString()
-            .slice(0, 10);
-          toDateInput.value = new Date(new Date().getFullYear(), 11, 32)
-            .toISOString()
-            .slice(0, 10);
-        }
+            const urlParams = new URLSearchParams(window.location.search);
+            const id = urlParams.get("id");
+            if (id && id != null) {
+                fromDateInput.value = "";
+                toDateInput.value = "";
+            } else {
+                fromDateInput.value = new Date(new Date().getFullYear(), 0, 2)
+                    .toISOString()
+                    .slice(0, 10);
+                toDateInput.value = new Date(new Date().getFullYear(), 11, 32)
+                    .toISOString()
+                    .slice(0, 10);
+            }
 
-        
 
-        $("#project-selected").selectize({
-            valueField: "Value",
-            labelField: "Text",
-            searchField:["Text","Value"],
-            options: options
+
+            $("#project-selected").selectize({
+                valueField: "Value",
+                labelField: "Text",
+                searchField: ["Text", "Value"],
+                options: options
+            });
+
+            //end of doc on ready
         });
-
-        //end of doc on ready
-      });
     </script>
   </body>
 </html>
