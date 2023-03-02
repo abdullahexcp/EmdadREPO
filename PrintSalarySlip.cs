@@ -207,7 +207,7 @@ FROM         new_invoiceBase INNER JOIN
     public string optionsJson = string.Empty; 
     public List<SelectListItem> GetProjectsSelectList()
     {
-        var result = CRMAccessDB.SelectQ("select new_projectid ,new_name from new_project where statecode = 0");
+        var result = CRMAccessDB.SelectQ("select new_projectid ,new_name from new_project");
         var projectsSelectList = new List<SelectListItem>();
         DataTable dt = result.Tables[0];
         if (dt.Rows.Count > 0)
@@ -478,7 +478,7 @@ FROM         new_invoiceBase INNER JOIN
                 if (!salarySlipQuery.EndsWith("Where "))
                     salarySlipQuery += " and ";
                 salarySlipQuery +=
-                    "new_invoiceBase.new_fromdate >= CONVERT(datetime, '" + fromdate.Text + "')";
+                    "new_invoiceBase.new_fromdate > DATEADD( day, -1,CONVERT(datetime, '" + fromdate.Text + "') )";
             }
 
             if (string.IsNullOrEmpty(todate.Text))
@@ -490,7 +490,7 @@ FROM         new_invoiceBase INNER JOIN
             else
             {
                 salarySlipQuery +=
-                    " and new_invoiceBase.new_todate <= CONVERT(datetime, '" + todate.Text + "')";
+                    " and new_invoiceBase.new_todate <= CONVERT(datetime, '" + todate.Text + "') ";
             }
 
             if (!string.IsNullOrEmpty(projectId))
@@ -520,6 +520,9 @@ FROM         new_invoiceBase INNER JOIN
                     + empIds
                     + ") )";
             }
+            if (!salarySlipQuery.EndsWith("Where "))
+                    salarySlipQuery += " and ";
+            salarySlipQuery += " new_invoiceBase.new_invoicetype <> 100000002   order by new_invoiceBase.new_fromdate";
 
             //remove unused where clause
             if (salarySlipQuery.EndsWith("Where "))
